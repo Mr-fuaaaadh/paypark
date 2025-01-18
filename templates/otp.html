@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgot Password OTP</title>
+    <style>
+        /* Global styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+        }
+        p {
+            margin-bottom: 10px;
+        }
+        .red {
+            color: red;
+        }
+        .green {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="background-color: #fff;">
+        <h2>Forgot Password OTP</h2>
+        <p>Hello,</p>
+        <p>Your OTP code for resetting your password is: <strong class="red">{{ otp }}</strong></p>
+        <p>If you did not request this OTP, please ignore this email.</p>
+        <p class="green">Thank you,</p>
+        <p class="green">The Pay and Park Team</p>
+    </div>
+</body>
+</html>
