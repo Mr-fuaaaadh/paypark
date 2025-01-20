@@ -8,6 +8,7 @@ class PlotOnwners(models.Model):
     owner_name = models.CharField(max_length=100, null=False)
     owner_email = models.CharField(max_length=100,null=False, unique=True)
     owner_phone = models.CharField(max_length=15, unique=True, null=False)
+    owner_address = models.TextField()
     latitude = models.DecimalField(max_digits=10, decimal_places=8, null=False)
     longitude = models.DecimalField(max_digits=11, decimal_places=8, null=False)
     ownership_type = models.CharField(
@@ -67,3 +68,37 @@ class Vehicle(models.Model):
 
     def __str__(self):
         return self.name
+
+
+
+class ParkingCharge(models.Model):
+    pricing_id =  models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    owner_id = models.ForeignKey(PlotOnwners, on_delete=models.CASCADE,related_name='pricing')
+    vehicle_type = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
+    hourly_rate = models.FloatField()
+    created_at = models.DateField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta :
+        db_table = "ParkingCharge"
+    
+    def __str__(self):
+        return f"Station: {self.owner_id.owner_name}, Vehicle Type: {self.vehicle_type.name}"
+
+
+class ParkingPlots(models.Model):
+    plot_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    owner_id = models.ForeignKey(PlotOnwners, on_delete=models.CASCADE)
+    plot_no = models.CharField(max_length=10, unique=True, editable=False)
+    status = models.CharField(max_length=20)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # Automatically generate plot number if not provided
+        if not self.plot_no:
+            self.plot_no = f"PLT-{uuid.uuid4().hex[:6].upper()}"
+        super(ParkingPlots, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return self.plot_no
+

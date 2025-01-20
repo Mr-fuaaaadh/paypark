@@ -11,10 +11,18 @@ class UserSerilzer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class ParkingChargeSerilizers(serializers.ModelSerializer):
+    vehicle_type = serializers.CharField(source='vehicle_type.name')
+    class Meta :
+        model = ParkingCharge
+        fields = ['id','vehicle_type','hourly_rate']
+
+
 class ParkingStationSerializers(serializers.ModelSerializer):
     images = ParkingStationImages(read_only=True, many=True)
+    pricing = ParkingChargeSerilizers(read_only=True, many=True)
     class Meta :
         model = PlotOnwners
-        fields = ['ownerID','owner_name','owner_email','owner_phone','latitude','longitude','images']
+        fields = ['ownerID','owner_name','owner_email','owner_phone','owner_address','latitude','longitude','pricing','images']
 
 

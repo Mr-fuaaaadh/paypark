@@ -434,13 +434,11 @@ class ManageParkingStationImages(BaseDataView):
             
             for image in images:
                 image_instance = Images.objects.create(station=auth_user, image=image)
-                created_images.append(image_instance)
 
             return self._success_response(message="Images uploaded successfully")
         except Exception as e:
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
 
-class ManageParkingStationImages(BaseDataView):
     def get(self, request):
         try:
             user = self._admin_authenticate(request)
@@ -451,6 +449,71 @@ class ManageParkingStationImages(BaseDataView):
             return Response({"message":"success","data":serialized_images.data},status=status.HTTP_200_OK)
         except Exception as e:
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
+    
+    def delete(self,request,pk):
+        try :
+            user = self._admin_authenticate(request)
+            image = get_object_or_404(Images, pk=pk)
+            image.delete()
+            return self._success_response(message = "Image delete successful")
+            
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+
+class VehiclePriceManagmentView(BaseDataView):
+    def post(self, request):
+        try :
+            user = self._admin_authenticate(request)
+            request.data['owner_id'] = user.pk
+            serializer = VehiclePricingManagementSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return self._success_response(message="Vehicle Price Chargig succesflly completed")
+            return self._bad_request({"message":serializer.errors})
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+    
+    def get(self,request):
+        try :
+            user = self._admin_authenticate(request)
+            charges = ParkingCharge.objects.filter(owner_id=user.pk)
+            serializer = VehiclePricingManagementSerializer(charges, many=True)
+            return Response({"status":"success","data":serializer.data},status=status.HTTP_200_OK)
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+
+    def put(self, request, pk):
+        try:
+            user = self._admin_authenticate(request)
+            
+            # Retrieve the ParkingCharge instance by pk
+            price = get_object_or_404(ParkingCharge, pk=pk)
+            
+            # Serialize the incoming data with partial update
+            serializer = VehiclePricingManagementSerializer(price, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return self._success_response(message="Vehicle pricing successfully updated")
+            return self._bad_request(message="Validation failed", errors=serializer.errors)
+        
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+
+    def delete(self,request,pk):
+        try :
+            user = self._admin_authenticate(request)
+            price = get_object_or_404(ParkingCharge, pk=pk)
+            price.delete()
+            return self._success_response(message="Vehicle pricing successfully deleted")
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+
+
+
+
+
+
+    
 
         
 

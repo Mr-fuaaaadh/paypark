@@ -15,3 +15,8 @@ class ParkingStationImages(serializers.ModelSerializer):
     class Meta :
         model = Images
         fields = "__all__"
+
+class VehiclePricingManagementSerializer(serializers.ModelSerializer):
+    class Meta :
+        model = ParkingCharge
+        fields = "__all__"

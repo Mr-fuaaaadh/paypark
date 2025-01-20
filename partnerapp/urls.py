@@ -16,7 +16,17 @@ urlpatterns = [
 
     path('admin/vehicle/',VehicleManagementView.as_view()),
     path('admin/vehicle/<int:pk>/edit/',VehicleManagementView.as_view()),
+
     path('admin/parking/station/images/',ManageParkingStationImages.as_view()),
+    path('admin/parking/station/<int:pk>/images/',ManageParkingStationImages.as_view()),
+
+
+    path('admin/parking/vehicle/pricig/management/', VehiclePriceManagmentView.as_view()),
+    path('admin/parking/vehicle/pricig/<int:pk>/management/', VehiclePriceManagmentView.as_view()),
+
+
+
+
 
 
 
