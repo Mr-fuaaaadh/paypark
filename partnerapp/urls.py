@@ -24,6 +24,11 @@ urlpatterns = [
     path('admin/parking/vehicle/pricig/management/', VehiclePriceManagmentView.as_view()),
     path('admin/parking/vehicle/pricig/<int:pk>/management/', VehiclePriceManagmentView.as_view()),
 
+    path('admin/parking/plots/management/', ParkingPlotManagementView.as_view()),
+    path('admin/parking/plots/<int:pk>/management/', ParkingPlotManagementView.as_view()),
+
+
+
 
 
 

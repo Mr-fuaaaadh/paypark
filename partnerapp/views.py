@@ -510,14 +510,50 @@ class VehiclePriceManagmentView(BaseDataView):
 
 
 
+class ParkingPlotManagementView(BaseDataView):
+    def post(self,request):
+        try :
+            user = self._admin_authenticate(request)
+            request.data['owner_id']=user.pk
+            serializer = ParkingPlotsSerializrs(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return self._success_response(message="Plot succesfully addedd")
+            return self._bad_request(message=serializer.errors)
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
 
-
-
+    def get(self,request):
+        try :
+            user = self._admin_authenticate(request)
+            owner_plots = ParkingPlots.objects.filter(owner_id=user.pk)
+            serializer  = ParkingPlotsSerializrs(owner_plots, many=True)
+            return Response({"status":"success","data":serializer.data},status=status.HTTP_200_OK)
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
     
+    def put(self,request,pk):
+        try :
+            user = self._admin_authenticate(request)
+            plotID = get_object_or_404(ParkingPlots, pk=pk)
+            request.data['owner_id'] =user.pk
+            serializer =  ParkingPlotsSerializrs(plotID,data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return self._success_response(message="Plot updated successfuly")
+            return self._bad_request(message=serializer.errors)
 
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
         
-
-
-
+    def delete(self, request, pk):
+        try:
+            user = self._admin_authenticate(request)
+            plotID = get_object_or_404(ParkingPlots, pk=pk)
+            plotID.delete()
+            return self._success_response(message="Plot delete successfuly")
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+ 
 
 

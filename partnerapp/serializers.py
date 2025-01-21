@@ -20,3 +20,8 @@ class VehiclePricingManagementSerializer(serializers.ModelSerializer):
     class Meta :
         model = ParkingCharge
         fields = "__all__"
+
+class ParkingPlotsSerializrs(serializers.ModelSerializer):
+    class Meta :
+        model = ParkingPlots
+        fields = "__all__"

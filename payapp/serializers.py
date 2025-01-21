@@ -18,11 +18,19 @@ class ParkingChargeSerilizers(serializers.ModelSerializer):
         fields = ['id','vehicle_type','hourly_rate']
 
 
+class AvailablePlotsSerilizets(serializers.ModelSerializer):
+    class Meta :
+        model = ParkingPlots
+        fields = ['id','plot_no','status','created_at']
+
+
+
 class ParkingStationSerializers(serializers.ModelSerializer):
     images = ParkingStationImages(read_only=True, many=True)
     pricing = ParkingChargeSerilizers(read_only=True, many=True)
+    plots = AvailablePlotsSerilizets(read_only=True, many=True)
     class Meta :
         model = PlotOnwners
-        fields = ['ownerID','owner_name','owner_email','owner_phone','owner_address','latitude','longitude','pricing','images']
+        fields = ['ownerID','owner_name','owner_email','owner_phone','owner_address','latitude','longitude','pricing','plots','images']
 
 

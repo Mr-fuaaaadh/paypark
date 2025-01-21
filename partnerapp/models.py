@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
+from datetime import datetime
+from payapp.models import Customer
 import uuid
 
 # Create your models here.
@@ -88,10 +90,10 @@ class ParkingCharge(models.Model):
 
 class ParkingPlots(models.Model):
     plot_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    owner_id = models.ForeignKey(PlotOnwners, on_delete=models.CASCADE)
+    owner_id = models.ForeignKey(PlotOnwners, on_delete=models.CASCADE,related_name="plots")
     plot_no = models.CharField(max_length=10, unique=True, editable=False)
     status = models.CharField(max_length=20)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=datetime.now) 
 
     def save(self, *args, **kwargs):
         # Automatically generate plot number if not provided
@@ -102,3 +104,23 @@ class ParkingPlots(models.Model):
     def __str__(self):
         return self.plot_no
 
+
+
+class ParkingReservation(models.Model):
+    reservation_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    user_id = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='reservations')
+    plot_id = models.ForeignKey(ParkingPlots, on_delete=models.CASCADE, related_name='reservations')
+    start_time = models.DateTimeField(null=False)
+    end_time = models.DateTimeField(null=False)
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+        ('reserved', 'Reserved'),
+        ('cancelled', 'Cancelled'),
+    ]
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Reservation {self.reservation_id} - {self.status}"

@@ -5,5 +5,6 @@ admin.site.register(PlotOnwners)
 admin.site.register(Images)
 admin.site.register(Vehicle)
 admin.site.register(ParkingCharge)
+admin.site.register(ParkingPlots)
 
 
