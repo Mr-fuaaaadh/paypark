@@ -102,7 +102,7 @@ class ParkingPlots(models.Model):
         super(ParkingPlots, self).save(*args, **kwargs)
 
     def __str__(self):
-        return self.plot_no
+        return f"Plot No : {self.plot_no}, status {self.status}Owner :{self.owner_id.owner_name}"
 
 
 
@@ -118,7 +118,7 @@ class ParkingReservation(models.Model):
         ('reserved', 'Reserved'),
         ('cancelled', 'Cancelled'),
     ]
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='reserved')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

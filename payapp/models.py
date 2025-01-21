@@ -6,7 +6,7 @@ from datetime import timedelta
 
 
 class Customer(models.Model):
-    _id = models.UUIDField(max_length=100,default=uuid.uuid4, editable=False)
+    _id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=100, null=False)
     email = models.EmailField(max_length=100, unique=True, null=False)
     phone_number = models.CharField(max_length=15, null=False)  

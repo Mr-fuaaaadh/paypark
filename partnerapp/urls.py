@@ -27,6 +27,9 @@ urlpatterns = [
     path('admin/parking/plots/management/', ParkingPlotManagementView.as_view()),
     path('admin/parking/plots/<int:pk>/management/', ParkingPlotManagementView.as_view()),
 
+    path('admin/parking/reservations/', ReservationManagementView.as_view()),
+
+
 
 
 

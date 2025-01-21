@@ -25,3 +25,9 @@ class ParkingPlotsSerializrs(serializers.ModelSerializer):
     class Meta :
         model = ParkingPlots
         fields = "__all__"
+
+
+class ParkingReservatonSerializers(serializers.ModelSerializer):
+    class Meta :
+        model = ParkingReservation
+        fields = "__all__"

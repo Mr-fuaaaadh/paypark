@@ -13,7 +13,10 @@ urlpatterns = [
 
 
     path('user/vehicles/',CustomerGetAllVehiclesType.as_view()),
-    path('user/parking/stations/',GetAllParkStations.as_view())
+    path('user/parking/stations/',GetAllParkStations.as_view()),
+
+    path('user/parking/reservation/',CustomerParkingPlotReservation.as_view()),
+
 
 
 

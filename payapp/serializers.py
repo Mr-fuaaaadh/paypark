@@ -34,3 +34,7 @@ class ParkingStationSerializers(serializers.ModelSerializer):
         fields = ['ownerID','owner_name','owner_email','owner_phone','owner_address','latitude','longitude','pricing','plots','images']
 
 
+class CustomerParkingPlotReservationSerializers(serializers.ModelSerializer):
+    class Meta :
+        model = ParkingReservation
+        fields = "__all__"

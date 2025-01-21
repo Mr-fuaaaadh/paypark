@@ -81,10 +81,11 @@ class BaseTokenView(APIView):
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
             user = self._get_user_from_payload(payload)
+            print(user.pk)
             if not user:
                 return None, self._not_found_response({"message":"User not found"})
             
-            return user, None
+            return user.pk, None
         except jwt.ExpiredSignatureError:
             return None, self._unauthorized_response({"message":"Token has expired"})
         except jwt.InvalidTokenError:
@@ -102,6 +103,7 @@ class BaseTokenView(APIView):
     def _get_user_from_payload(self, payload):
         """Retrieve the user from the payload data."""
         user_id = payload.get('id')
+        print(user_id)
         if not user_id:
             return None
         return Customer.objects.filter(pk=user_id).first()
@@ -123,6 +125,7 @@ class BaseTokenView(APIView):
     
     def authenticate(self, request):
         user, error_response = self.get_user_from_token(request)
+        print(user)
         if error_response:
             return error_response
         return user
@@ -333,3 +336,41 @@ class GetAllParkStations(BaseTokenView):
             return Response({"message":"success","data":serializer.data},status=status.HTTP_200_OK)
         except Exception as e :
             return self._server_error_response(message = "An unexpected error occurred" , error = str(e))
+
+
+
+class CustomerParkingPlotReservation(BaseTokenView):
+
+    def post(self, request):
+        try:
+            serializer = CustomerParkingPlotReservationSerializers(data=request.data)
+            if serializer.is_valid():
+                # Add custom validation logic if necessary
+                serializer.save()
+                return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as ve:
+            return Response({"success": False, "errors": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {"success": False, "message": "An unexpected error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def get(self,request):
+        try:
+            user = self.get_user_from_token(request)
+            print(user)
+            user_reservations = ParkingReservation.objects.filter(user_id=user)
+            serializer = CustomerParkingPlotReservationSerializers(user_reservations, many=True)
+            return Response({"message": "success", "data": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"success": False, "message": "An unexpected error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+
+

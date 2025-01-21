@@ -556,4 +556,13 @@ class ParkingPlotManagementView(BaseDataView):
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
  
 
+class ReservationManagementView(BaseDataView):
+    def get(self,request):
+        try :
+            user = self._admin_authenticate(request)
+            paking_reservation = ParkingReservation.objects.filter(plot_id__owner_id = user.pk)
+            serializer = ParkingReservatonSerializers(paking_reservation, many=True)
+            return Response({"status":"success","data":serializer.data},status=status.HTTP_200_OK)
 
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
