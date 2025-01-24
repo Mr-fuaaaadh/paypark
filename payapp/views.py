@@ -1,11 +1,13 @@
 import jwt
 import logging
 import random
+import razorpay
 from .serializers import *
 from partnerapp.models import *
 from partnerapp.serializers import *
 from django.conf import settings
 from rest_framework import status
+from django.db import transaction
 from django.core.mail import send_mail
 from datetime import datetime, timedelta
 from rest_framework.views import APIView
@@ -16,7 +18,8 @@ from rest_framework.exceptions import APIException
 from django.template.loader import render_to_string
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import check_password
-
+from celery import shared_task
+from payapp.razorpay import *
 
 logger = logging.getLogger(__name__)
 
@@ -73,40 +76,32 @@ class UserLoginAPIView(APIView):
 class BaseTokenView(APIView):
 
     def get_user_from_token(self, request):
-
         token = self._get_token_from_header(request.headers.get('Authorization'))
         if not token:
-            return None, self._unauthorized_response({"message":"No token provided"})
+            return None, self._unauthorized_response("No token provided")
 
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
             user = self._get_user_from_payload(payload)
-            print(user.pk)
             if not user:
-                return None, self._not_found_response({"message":"User not found"})
-            
+                return None, self._not_found_response("User not found")
+
             return user.pk, None
         except jwt.ExpiredSignatureError:
-            return None, self._unauthorized_response({"message":"Token has expired"})
+            return None, self._unauthorized_response("Token has expired")
         except jwt.InvalidTokenError:
-            return None, self._unauthorized_response({"message":"Invalid token"})
+            return None, self._unauthorized_response("Invalid token")
         except Exception as e:
             return None, self._server_error_response("An error occurred while decoding the token", str(e))
 
     def _get_token_from_header(self, auth_header):
-        """Extract the token from the Authorization header without the 'Bearer' prefix."""
-        if not auth_header:
-            return None
-        return auth_header.strip() 
-
+        """Extract the token from the Authorization header."""
+        return auth_header.strip() if auth_header else None
 
     def _get_user_from_payload(self, payload):
         """Retrieve the user from the payload data."""
         user_id = payload.get('id')
-        print(user_id)
-        if not user_id:
-            return None
-        return Customer.objects.filter(pk=user_id).first()
+        return Customer.objects.filter(pk=user_id).first() if user_id else None
 
     def _unauthorized_response(self, message):
         """Return a standardized unauthorized response."""
@@ -122,24 +117,19 @@ class BaseTokenView(APIView):
             {"status": "error", "message": message, "error": error},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-    
+
     def authenticate(self, request):
         user, error_response = self.get_user_from_token(request)
-        print(user)
-        if error_response:
-            return error_response
-        return user
-    
+        return error_response or user
+
     def _get_user_by_email(self, email):
         """Fetch user by email or raise an exception if not found."""
-        try:
-            return Customer.objects.get(email=email)
-        except Customer.DoesNotExist:
-            raise ObjectDoesNotExist(f"User with email {email} not found.")
-        
+        return Customer.objects.filter(email=email).first() or ObjectDoesNotExist(f"User with email {email} not found.")
+
     def _bad_request(self, message):
         """Returns a standardized bad request response."""
         return Response({"message": message}, status=status.HTTP_400_BAD_REQUEST)
+
 
     
 
@@ -340,30 +330,32 @@ class GetAllParkStations(BaseTokenView):
 
 
 class CustomerParkingPlotReservation(BaseTokenView):
-
     def post(self, request):
         try:
+            user, _ = self.get_user_from_token(request)
+            request.data['user_id'] = user
+
             serializer = CustomerParkingPlotReservationSerializers(data=request.data)
             if serializer.is_valid():
-                # Add custom validation logic if necessary
                 serializer.save()
                 return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
             return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
         except ValidationError as ve:
             return Response({"success": False, "errors": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(
-                {"success": False, "message": "An unexpected error occurred", "error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
-    def get(self,request):
+        except Exception as e:
+            return Response({"success": False, "message": "An unexpected error occurred", "error": str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request):
         try:
             user = self.get_user_from_token(request)
-            print(user)
+
             user_reservations = ParkingReservation.objects.filter(user_id=user)
             serializer = CustomerParkingPlotReservationSerializers(user_reservations, many=True)
+
             return Response({"message": "success", "data": serializer.data}, status=status.HTTP_200_OK)
+
         except Exception as e:
             return Response(
                 {"success": False, "message": "An unexpected error occurred", "error": str(e)},
@@ -373,4 +365,126 @@ class CustomerParkingPlotReservation(BaseTokenView):
 
 
 
+class RazorpayPaymentInitiation(BaseTokenView):
+    """
+    API View to initiate Razorpay payments.
+    """
+
+    def post(self, request):
+        user_id, _ = self.get_user_from_token(request)  
+
+        # 1. Validate and deserialize the request data
+        serializer = PaymentInitiationSerializer(data=request.data)
+        print(serializer)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Extract validated data
+        validated_data = serializer.validated_data
+        reservation_id = validated_data["reservation_id"]
+        amount = validated_data["amount"]
+
+        try:
+            # 3. Retrieve the user (assuming you have a token-based system)
+            customer = get_object_or_404(Customer, pk=user_id)
+
+            # 4. Verify that the reservation belongs to this customer
+            reservation = get_object_or_404(
+                ParkingReservation, 
+                reservation_id=reservation_id, 
+                user_id=user_id
+            )
+
+            # 5. Create a Razorpay order (using a utility function)
+            #    Convert amount to float or integer paise as required by Razorpay
+            razorpay_order = create_razorpay_order(float(amount))
+
+            # 6. Save payment in the database within a transaction
+            with transaction.atomic():
+                Payment.objects.create(
+                    user=customer,
+                    reservation_id=reservation,
+                    amount=amount,  # This is Decimal, which is good for currency
+                    payment_method="razorpay",
+                    status="pending",
+                    transaction_id=razorpay_order["id"],
+                )
+
+            # 7. Return the necessary data for the client to proceed with Razorpay
+            return Response(
+                {
+                    "order_id": razorpay_order["id"],
+                    "amount": str(amount),  # Convert Decimal to string if needed
+                    "currency": "INR",
+                    "key": settings.RAZORPAY_API_KEY,
+                    "callback_url": request.build_absolute_uri("/api/payment/verify/"),
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        except ParkingReservation.DoesNotExist:
+            return Response(
+                {"error": "Reservation not found for this user."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class RazorpayPaymentVerification(BaseTokenView):
+    """
+    API View to verify Razorpay payments.
+    """
+
+    def post(self, request):
+        try:
+            user_id, _ = self.get_user_from_token(request) 
+            customer = get_object_or_404(Customer, pk=user_id)
+
+            razorpay_order_id = request.data.get("razorpay_order_id")
+            razorpay_payment_id = request.data.get("razorpay_payment_id")
+            razorpay_signature = request.data.get("razorpay_signature")
+
+            if not razorpay_order_id or not razorpay_payment_id or not razorpay_signature:
+                return Response({"error": "Incomplete payment details."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Enqueue verification and capturing in a background task
+            verify_and_capture_payment.delay(razorpay_order_id, razorpay_payment_id, razorpay_signature, customer)
+
+            return Response({"message": "Payment verification initiated."}, status=status.HTTP_202_ACCEPTED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@shared_task
+def verify_and_capture_payment(order_id, payment_id, signature, user_id):
+    """
+    Asynchronous task to verify and capture Razorpay payment.
+    """
+    try:
+        # Verify payment signature
+        params_dict = {
+            "razorpay_order_id": order_id,
+            "razorpay_payment_id": payment_id,
+            "razorpay_signature": signature,
+        }
+        verify_razorpay_signature(params_dict)
+
+        # Capture payment
+        payment = get_object_or_404(Payment, transaction_id=order_id, user_id=user_id)
+        capture_razorpay_payment(payment_id, payment.amount)
+
+        # Update payment status
+        payment.status = "completed"
+        payment.save()
+
+    except Exception as e:
+        # Update payment status to failed
+        payment = Payment.objects.filter(transaction_id=order_id).first()
+        if payment:
+            payment.status = "failed"
+            payment.save()
+        raise e
 

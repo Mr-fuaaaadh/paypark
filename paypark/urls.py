@@ -23,7 +23,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('',include('payapp.urls')),
-    path('plot/owner/',include('partnerapp.urls'))
+    path('plot/',include('partnerapp.urls'))
 
 ]
 if settings.DEBUG:  # Only serve media files in development

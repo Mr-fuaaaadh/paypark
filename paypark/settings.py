@@ -142,3 +142,9 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'muhammadfuhad3@gmail.com'
 EMAIL_HOST_PASSWORD = 'imci azii rmjo ssxv'
+
+
+
+RAZORPAY_API_KEY = 'rzp_test_Et42z7W3O2fqxX'
+RAZORPAY_API_SECRET = '0SzesXHaLolGsw99JmP3DvXg'
+

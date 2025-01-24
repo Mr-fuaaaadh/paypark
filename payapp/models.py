@@ -32,3 +32,7 @@ class OTP(models.Model):
 
     class Meta:
         db_table = "OTP"
+
+
+
+

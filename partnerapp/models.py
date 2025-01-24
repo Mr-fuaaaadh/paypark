@@ -1,7 +1,10 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
-from datetime import datetime
+from datetime import datetime, timedelta
 from payapp.models import Customer
+from django.utils import timezone
+
+from django.utils.timezone import now
 import uuid
 
 # Create your models here.
@@ -10,7 +13,7 @@ class PlotOnwners(models.Model):
     owner_name = models.CharField(max_length=100, null=False)
     owner_email = models.CharField(max_length=100,null=False, unique=True)
     owner_phone = models.CharField(max_length=15, unique=True, null=False)
-    owner_address = models.TextField()
+    owner_address = models.TextField(null=True)
     latitude = models.DecimalField(max_digits=10, decimal_places=8, null=False)
     longitude = models.DecimalField(max_digits=11, decimal_places=8, null=False)
     ownership_type = models.CharField(
@@ -124,3 +127,49 @@ class ParkingReservation(models.Model):
 
     def __str__(self):
         return f"Reservation {self.reservation_id} - {self.status}"
+
+
+class Payment(models.Model):
+    _id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    user = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='payments')
+    reservation_id = models.ForeignKey(ParkingReservation, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=[
+        ('razorpay', 'Razorpay'),
+        ('cash', 'Cash')],
+    )
+    status = models.CharField(max_length=20,choices=[
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded')],
+        default='pending',
+    )
+    payment_date = models.DateTimeField(auto_now_add=True)
+    transaction_id = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+
+
+    def __str__(self):
+        return f"Payment {self.payment_id} for Reservation {self.reservation_id}"
+
+
+class Review(models.Model):
+    review_id = models.AutoField(primary_key=True)  
+    user = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='reviews')  
+    reservation = models.ForeignKey(ParkingReservation, on_delete=models.CASCADE, related_name='reviews')
+    review_text = models.TextField() 
+    rating = models.PositiveSmallIntegerField()
+    review_date = models.DateTimeField(auto_now_add=True) 
+
+    def __str__(self):
+        return f"Review {self.review_id} by User {self.user_id}"
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(rating__gte=1) & models.Q(rating__lte=5),
+                name='rating_between_1_and_5'
+            )
+        ]
