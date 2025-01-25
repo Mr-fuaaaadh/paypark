@@ -20,46 +20,51 @@ from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
 logger = logging.getLogger(__name__)
 
-# Create your views here.
-
-
 
 class BaseDataView(APIView):
 
     def get_user_from_token(self, request):
-
         token = self._get_token_from_header(request.headers.get('Authorization'))
         if not token:
-            return None, self._unauthorized_response({"message":"No token provided"})
+            logger.info("No token provided in request header")
+            return None, self._unauthorized_response({"message": "No token provided"})
 
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
             user = self._get_user_from_payload(payload)
             if not user:
-                return None, self._not_found_response({"message":"User not found"})
+                return None, self._not_found_response({"message": "User not found"})
             
             return user, None
         except jwt.ExpiredSignatureError:
-            return None, self._unauthorized_response({"message":"Token has expired"})
+            logger.warning("Token has expired")
+            return None, self._unauthorized_response({"message": "Token has expired"})
         except jwt.InvalidTokenError:
-            return None, self._unauthorized_response({"message":"Invalid token"})
+            logger.warning("Invalid token")
+            return None, self._unauthorized_response({"message": "Invalid token"})
         except Exception as e:
+            logger.exception("Error occurred while decoding the token")
             return None, self._server_error_response("An error occurred while decoding the token", str(e))
 
     def _get_token_from_header(self, auth_header):
-        """Extract the token from the Authorization header without the 'Bearer' prefix."""
+        """Extract the token from the Authorization header (assuming no 'Bearer ' prefix)."""
         if not auth_header:
             return None
-        return auth_header.strip() 
-
+        return auth_header.strip()
 
     def _get_user_from_payload(self, payload):
         """Retrieve the user from the payload data."""
         user_id = payload.get('id')
+        logger.debug(f"Decoded user_id from payload: {user_id}")
+
         if not user_id:
             return None
-        return PlotOnwners.objects.filter(ownerID=user_id).first()
+        
+        user = get_object_or_404(PlotOnwners, ownerID=user_id)
+        logger.debug(f"Found user: {user}")
+        return user
 
+    
     def _admin_authenticate(self, request):
         user, error_response = self.get_user_from_token(request)
         if error_response:
@@ -114,6 +119,9 @@ class BaseDataView(APIView):
             fail_silently=False,
             html_message=email_body
         )
+
+    
+
 
     
     
@@ -557,12 +565,60 @@ class ParkingPlotManagementView(BaseDataView):
  
 
 class ReservationManagementView(BaseDataView):
+    def get(self, request):
+        """
+        Retrieves parking reservations.
+        - Admin users see ALL reservations.
+        - Non-admin (owners) see only their own reservations.
+        """
+        user, error_response = self.get_user_from_token(request)
+        if error_response:
+            return error_response
+
+        try:
+            if user.role == 'admin':
+                reservations = ParkingReservation.objects.all()
+            else:
+                reservations = ParkingReservation.objects.filter(plot_id__owner_id=user.pk)
+
+            if not reservations.exists():
+                return Response(
+                    {
+                        "status": "fail",
+                        "message": "No reservations found for this user" if user.role != 'admin' else "No reservations in the system"
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            serializer = ParkingReservatonSerializers(reservations, many=True)
+            
+            return Response(
+                {"status": "success", "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return self._server_error_response(
+                message="An unexpected error occurred",
+                error=str(e)
+            )
+            
+            
+            
+
+            
+            
+class AdmiViewAllParkingStations(BaseDataView):
     def get(self,request):
         try :
-            user = self._admin_authenticate(request)
-            paking_reservation = ParkingReservation.objects.filter(plot_id__owner_id = user.pk)
-            serializer = ParkingReservatonSerializers(paking_reservation, many=True)
-            return Response({"status":"success","data":serializer.data},status=status.HTTP_200_OK)
-
+            user, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            parking_stations = PlotOnwners.objects.all()
+            serializer = ParkOwnerAllDatasFetching(parking_stations, many=True)
+            return Response({"data":serializer.data},status=status.HTTP_200_OK)
         except Exception as e :
-            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+            return self._server_error_response(message="An unexpected error occurred",error=str(e))
+        
+

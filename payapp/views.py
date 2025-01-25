@@ -18,6 +18,7 @@ from rest_framework.exceptions import APIException
 from django.template.loader import render_to_string
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import check_password
+from django.http import Http404
 from celery import shared_task
 from payapp.razorpay import *
 
@@ -77,6 +78,7 @@ class BaseTokenView(APIView):
 
     def get_user_from_token(self, request):
         token = self._get_token_from_header(request.headers.get('Authorization'))
+        print(token)
         if not token:
             return None, self._unauthorized_response("No token provided")
 
@@ -130,6 +132,18 @@ class BaseTokenView(APIView):
         """Returns a standardized bad request response."""
         return Response({"message": message}, status=status.HTTP_400_BAD_REQUEST)
 
+    def _send_notificatio_using_email(self, email, message):
+        """Your Parking Slot Reservation is Complete"""
+        email_body = render_to_string('success.html', {'message': message})
+        send_mail(
+            'Pay to Park Slot Reservation',
+            '',
+            settings.EMAIL_HOST_USER,
+            [email],
+            fail_silently=False,
+            html_message=email_body
+        )
+
 
     
 
@@ -142,11 +156,12 @@ class UserProfileEdit(BaseTokenView):
     def get(self, request):
         try:
             user = self.authenticate(request)
-            serializer = UserSerilzer(user)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            customer = get_object_or_404(Customer,pk=user)
+            serializer = CusomerPaymentDetails(customer)
+            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
     
         except Exception as e:
-            return None, self._server_error_response({"message": "An unexpected error occurred", "error": str(e)})
+            return self._server_error_response( message = "An unexpected error occurred", error =  str(e))
 
     def put(self, request):
         try:
@@ -155,9 +170,10 @@ class UserProfileEdit(BaseTokenView):
             if serializer.is_valid():
                 serializer.save()
                 return Response({"data": serializer.data},status=status.HTTP_200_OK)
-            return self._bad_request({"message":serializer.errors})
+            return self._bad_request(message=serializer.errors)
+
         except Exception as e:
-            return self._server_error_response({"message":"An unexpected error occurred","error" : str(e)})
+            return self._server_error_response( message = "An unexpected error occurred", error =  str(e))
         
 
 
@@ -179,7 +195,7 @@ class UserForgotPassword(BaseTokenView):
             self._send_otp_email(email, otp)
             return Response({"message": "OTP sent to email"}, status=status.HTTP_200_OK)
         except Exception as e:
-            return self._server_error_response({"message":f"Error sending email","error": f"{str(e)}"})
+            return self._server_error_response(message = "Error sending email", error = f"{str(e)}")
 
     
     def _generate_otp(self):
@@ -333,26 +349,33 @@ class CustomerParkingPlotReservation(BaseTokenView):
     def post(self, request):
         try:
             user, _ = self.get_user_from_token(request)
+            customer = get_object_or_404(Customer, pk=user)
             request.data['user_id'] = user
 
             serializer = CustomerParkingPlotReservationSerializers(data=request.data)
             if serializer.is_valid():
-                serializer.save()
+                reservation = serializer.save()
+                # Prepare the success message
+                message = f"Your parking slot reservation was successful. Slot ID: {reservation.plot_id.plot_no}"
+                print(message)
+                # Send the success email notification
+                self._send_notificatio_using_email(customer.email, message)
                 return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
+
             return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         
         except ValidationError as ve:
             return Response({"success": False, "errors": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            return Response({"success": False, "message": "An unexpected error occurred", "error": str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(message = "An unexpected error occurred", error = str(e),status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         try:
             user = self.get_user_from_token(request)
 
             user_reservations = ParkingReservation.objects.filter(user_id=user)
-            serializer = CustomerParkingPlotReservationSerializers(user_reservations, many=True)
+            serializer = CustomerBookdPlots(user_reservations, many=True)
 
             return Response({"message": "success", "data": serializer.data}, status=status.HTTP_200_OK)
 
@@ -361,6 +384,23 @@ class CustomerParkingPlotReservation(BaseTokenView):
                 {"success": False, "message": "An unexpected error occurred", "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class CustomerCancelReservation(BaseTokenView):
+    def put(self, request, id):
+        try:
+            user = self.get_user_from_token(request)
+            reserved_plot = get_object_or_404(ParkingReservation, reservation_id=id, user_id=user)
+            
+            if reserved_plot.status == 'cancelled':
+                return Response({"success": False, "message": "This reservation is already cancelled."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            reserved_plot.status = 'cancelled'
+            reserved_plot.save()  
+            serializer = CustomerParkingPlotReservationSerializers(reserved_plot)
+            return Response({"status": "success", "message": "Your reservation has been cancelled successfully."}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"success": False, "message": "An unexpected error occurred", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -432,6 +472,7 @@ class RazorpayPaymentInitiation(BaseTokenView):
 
 
 
+
 class RazorpayPaymentVerification(BaseTokenView):
     """
     API View to verify Razorpay payments.
@@ -440,7 +481,12 @@ class RazorpayPaymentVerification(BaseTokenView):
     def post(self, request):
         try:
             user_id, _ = self.get_user_from_token(request) 
-            customer = get_object_or_404(Customer, pk=user_id)
+            print(user_id)
+            
+            try:
+                customer = get_object_or_404(Customer, pk=user_id)
+            except Http404:
+                return Response({"error": "Customer not found."}, status=status.HTTP_404_NOT_FOUND)
 
             razorpay_order_id = request.data.get("razorpay_order_id")
             razorpay_payment_id = request.data.get("razorpay_payment_id")
@@ -458,23 +504,24 @@ class RazorpayPaymentVerification(BaseTokenView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
 @shared_task
-def verify_and_capture_payment(order_id, payment_id, signature, user_id):
+def verify_and_capture_payment(razorpay_order_id, razorpay_payment_id, signature, customer):
     """
     Asynchronous task to verify and capture Razorpay payment.
     """
     try:
         # Verify payment signature
         params_dict = {
-            "razorpay_order_id": order_id,
-            "razorpay_payment_id": payment_id,
-            "razorpay_signature": signature,
+            "razorpay_order_id": razorpay_order_id,
+            "razorpay_payment_id": razorpay_payment_id,
+            "razorpay_signature": razorpay_signature,
         }
         verify_razorpay_signature(params_dict)
 
         # Capture payment
-        payment = get_object_or_404(Payment, transaction_id=order_id, user_id=user_id)
-        capture_razorpay_payment(payment_id, payment.amount)
+        payment = get_object_or_404(Payment, transaction_id=razorpay_order_id, user=customer)
+        capture_razorpay_payment(razorpay_payment_id, payment.amount)
 
         # Update payment status
         payment.status = "completed"
@@ -488,3 +535,27 @@ def verify_and_capture_payment(order_id, payment_id, signature, user_id):
             payment.save()
         raise e
 
+
+
+class CreateReviewInCompletedReservation(BaseTokenView):
+    """
+    Handles the creation of reviews for completed reservations.
+    """
+    def post(self, request):
+        try:
+            user, _ = self.get_user_from_token(request)
+            customer = get_object_or_404(Customer, pk=user)
+            request.data['user'] = customer.pk
+            
+            serializer = ReviewSerializres(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Review added successfully."},status=status.HTTP_201_CREATED,)
+            return self._bad_request(message = serializer.errors)
+
+        except Customer.DoesNotExist:
+            return self._not_found_response(message = "Customer not found.")
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred.", error=str(e))
+            
+        

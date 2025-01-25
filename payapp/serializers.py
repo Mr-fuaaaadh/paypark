@@ -4,7 +4,9 @@ from partnerapp.models import *
 from partnerapp.serializers import *
 from django.db.models import Q
 from datetime import datetime
+from django.utils.timezone import localtime
 
+import pytz
 
 class UserSerilzer(serializers.ModelSerializer):
     class Meta :
@@ -24,27 +26,40 @@ class AvailablePlotsSerilizets(serializers.ModelSerializer):
         model = ParkingPlots
         fields = ['id','plot_no','status','created_at']
 
-
+class ViewReviewSerializres(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.name')
+    user_image = serializers.ImageField(source='user.profile_image')
+    class Meta :
+        model = Review
+        fields = ['review_id','user_name','user_image','review_text','rating','review_date'] 
 
 class ParkingStationSerializers(serializers.ModelSerializer):
     images = ParkingStationImages(read_only=True, many=True)
     pricing = ParkingChargeSerilizers(read_only=True, many=True)
     plots = AvailablePlotsSerilizets(read_only=True, many=True)
+    reviews = ViewReviewSerializres(read_only=True, many=True)
     class Meta :
         model = PlotOnwners
-        fields = ['ownerID','owner_name','owner_email','owner_phone','owner_address','latitude','longitude','pricing','plots','images']
+        fields = ['ownerID','owner_name','owner_email','owner_phone','owner_address','latitude','longitude','pricing','plots','images','reviews']
 
 
 class CustomerParkingPlotReservationSerializers(serializers.ModelSerializer):
+
     class Meta:
         model = ParkingReservation
-        fields = "__all__"
+        fields = "__all__"  # or specify the exact fields if needed
 
     def validate(self, data):
         plot_id = data['plot_id']
         start_time = data['start_time']
         end_time = data['end_time']
+        current_time = timezone.now()  # Get the current time in the timezone-aware format
 
+        # Ensure that the start_time is in the future
+        if start_time <= current_time:
+            raise serializers.ValidationError("Start time must be in the future.")
+
+        # Ensure that the start_time is before the end_time
         if start_time >= end_time:
             raise serializers.ValidationError("Start time must be earlier than end time.")
 
@@ -62,6 +77,81 @@ class CustomerParkingPlotReservationSerializers(serializers.ModelSerializer):
         return data
 
 
+
+class CustomerBookdPlots(serializers.ModelSerializer):
+
+    start_date = serializers.SerializerMethodField()
+    start_time = serializers.SerializerMethodField()
+    end_date = serializers.SerializerMethodField()
+    end_time = serializers.SerializerMethodField()
+    customer = serializers.CharField(source="user_id.name")
+    station = serializers.CharField(source="plot_id.owner_id.owner_name")
+    No = serializers.CharField(source="plot_id.plot_no")
+    
+    class Meta :
+        model = ParkingReservation
+        fields = "__all__"  # or specify the exact fields if needed
+
+    def get_start_date(self, obj):
+        # Extracts the date from start_time
+        return obj.start_time.date() if obj.start_time else None
+
+    def get_start_time(self, obj):
+        # Convert start_time to Kerala Time (IST) and format with AM/PM
+        if obj.start_time:
+            start_time_kerala = obj.start_time.astimezone(pytz.timezone('Asia/Kolkata'))
+            return start_time_kerala.strftime('%I:%M %p')  # Time in 12-hour format with AM/PM
+        return None
+
+    def get_end_date(self, obj):
+        # Extracts the date from end_time
+        return obj.end_time.date() if obj.end_time else None
+
+    def get_end_time(self, obj):
+        # Convert end_time to Kerala Time (IST) and format with AM/PM
+        if obj.end_time:
+            end_time_kerala = obj.end_time.astimezone(pytz.timezone('Asia/Kolkata'))
+            return end_time_kerala.strftime('%I:%M %p')  # Time in 12-hour format with AM/PM
+        return None
+
+
+class PaymentSerilizers(serializers.ModelSerializer):
+    payment_date = serializers.SerializerMethodField()
+    payment_time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payment
+        fields = ['_id','amount','payment_method','status','transaction_id','payment_date','payment_time']
+
+    def get_payment_date(self, obj):
+        # Convert payment_date to Kerala time and extract the date
+        indian_timezone = pytz.timezone("Asia/Kolkata")
+        local_time = localtime(obj.payment_date, indian_timezone)
+        return local_time.date()
+
+    def get_payment_time(self, obj):
+        # Convert payment_date to Kerala time and extract the time
+        indian_timezone = pytz.timezone("Asia/Kolkata")
+        local_time = localtime(obj.payment_date, indian_timezone)
+        return local_time.strftime("%I:%M %p") 
+    
+    
+    
+class ReviewSerializres(serializers.ModelSerializer):
+    class Meta :
+        model = Review
+        fields = "__all__" 
+    
+    
+class CusomerPaymentDetails(serializers.ModelSerializer):
+    payments = PaymentSerilizers(read_only=True, many=True) 
+    class Meta :
+        model = Customer
+        fields = ['_id','name','email','phone_number','vehicle_number','model_number','profile_image','created_at','payments']
+    
+        
+        
+        
 class PaymentInitiationSerializer(serializers.Serializer):
     reservation_id = serializers.UUIDField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -80,3 +170,9 @@ class PaymentInitiationSerializer(serializers.Serializer):
         """
       
         return attrs
+    
+
+class ReviewSerializres(serializers.ModelSerializer):
+    class Meta :
+        model = Review
+        fields = "__all__" 

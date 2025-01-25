@@ -132,7 +132,7 @@ class ParkingReservation(models.Model):
 class Payment(models.Model):
     _id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     user = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='payments')
-    reservation_id = models.ForeignKey(ParkingReservation, on_delete=models.CASCADE)
+    reservation_id = models.ForeignKey(ParkingReservation, on_delete=models.CASCADE,related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=[
         ('razorpay', 'Razorpay'),
@@ -158,7 +158,7 @@ class Payment(models.Model):
 class Review(models.Model):
     review_id = models.AutoField(primary_key=True)  
     user = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='reviews')  
-    reservation = models.ForeignKey(ParkingReservation, on_delete=models.CASCADE, related_name='reviews')
+    owner  = models.ForeignKey(PlotOnwners, on_delete=models.CASCADE, related_name='reviews')
     review_text = models.TextField() 
     rating = models.PositiveSmallIntegerField()
     review_date = models.DateTimeField(auto_now_add=True) 
@@ -173,3 +173,4 @@ class Review(models.Model):
                 name='rating_between_1_and_5'
             )
         ]
+        

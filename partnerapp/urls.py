@@ -17,17 +17,19 @@ urlpatterns = [
     path('admin/vehicle/',VehicleManagementView.as_view()),
     path('admin/vehicle/<int:pk>/edit/',VehicleManagementView.as_view()),
 
-    path('admin/parking/station/images/',ManageParkingStationImages.as_view()),
-    path('admin/parking/station/<int:pk>/images/',ManageParkingStationImages.as_view()),
+    path('owner/parking/station/images/',ManageParkingStationImages.as_view()),
+    path('owner/parking/station/<int:pk>/images/',ManageParkingStationImages.as_view()),
 
 
-    path('admin/parking/vehicle/pricig/management/', VehiclePriceManagmentView.as_view()),
-    path('admin/parking/vehicle/pricig/<int:pk>/management/', VehiclePriceManagmentView.as_view()),
+    path('owner/parking/vehicle/pricig/management/', VehiclePriceManagmentView.as_view()),
+    path('owner/parking/vehicle/pricig/<int:pk>/management/', VehiclePriceManagmentView.as_view()),
 
-    path('admin/parking/plots/management/', ParkingPlotManagementView.as_view()),
-    path('admin/parking/plots/<int:pk>/management/', ParkingPlotManagementView.as_view()),
+    path('owner/parking/plots/management/', ParkingPlotManagementView.as_view()),
+    path('owner/parking/plots/<int:pk>/management/', ParkingPlotManagementView.as_view()),
 
-    path('admin/parking/reservations/', ReservationManagementView.as_view()),
+    path('owner/parking/reservations/', ReservationManagementView.as_view()),
+    path('admin/parking/stations/', AdmiViewAllParkingStations.as_view()),
+
 
 
 

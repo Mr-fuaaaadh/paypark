@@ -16,10 +16,15 @@ urlpatterns = [
     path('user/parking/stations/',GetAllParkStations.as_view()),
 
     path('user/parking/reservation/',CustomerParkingPlotReservation.as_view()),
+    path('user/parking/reservation/<str:id>/cancel/',CustomerCancelReservation.as_view()),
+
 
 
     path("initiate/", RazorpayPaymentInitiation.as_view(), name="razorpay_payment_initiation"),
     path("api/payment/verify/", RazorpayPaymentVerification.as_view(), name="razorpay_payment_verification"),
+    
+    
+    path('api/parkig/station/review/',CreateReviewInCompletedReservation.as_view())
 
 
 
