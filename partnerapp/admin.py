@@ -6,6 +6,8 @@ admin.site.register(Images)
 admin.site.register(Vehicle)
 admin.site.register(ParkingCharge)
 admin.site.register(ParkingPlots)
-admin.site.register(ParkingReservation)
+admin.site.register(ParkingReservationPayment)
+admin.site.register(Review)
+
 
 

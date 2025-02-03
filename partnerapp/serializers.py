@@ -36,13 +36,13 @@ class AdminAllParkingPlosView(serializers.ModelSerializer):
         
 class PaymentModelSerializers(serializers.ModelSerializer):
     class Meta:
-        model = Payment
+        model = ParkingReservationPayment
         fields = "__all__"
         
 class ParkingReservatonSerializers(serializers.ModelSerializer):
-    payments = PaymentModelSerializers(read_only=True, many=True)
+    reservations = PaymentModelSerializers(read_only=True, many=True)
     class Meta :
-        model = ParkingReservation
+        model = ParkingReservationPayment
         fields = "__all__"     
         
 class ParkOwnerAllDatasFetching(serializers.ModelSerializer):
@@ -82,7 +82,7 @@ class ParkOwnerAllDatasFetching(serializers.ModelSerializer):
     
     
     def get_payments(self,obj):
-        payment  = Payment.objects.filter(reservation_id__plot_id__owner_id = obj.id)
+        payment  = ParkingReservationPayment.objects.filter(reservation_id__plot_id__owner_id = obj.id)
         serializer = PaymentModelSerializers(payment, many=True)
         return serializer.data
         

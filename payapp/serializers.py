@@ -29,15 +29,30 @@ class AvailablePlotsSerilizets(serializers.ModelSerializer):
 class ViewReviewSerializres(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.name')
     user_image = serializers.ImageField(source='user.profile_image')
+    date = serializers.SerializerMethodField()
+    time = serializers.SerializerMethodField()
     class Meta :
         model = Review
-        fields = ['review_id','user_name','user_image','review_text','rating','review_date'] 
+        fields = "__all__"
+        
+    def get_date(self, obj):
+        # Extracts the date from start_time
+        return obj.review_date.date() if obj.review_date else None
+    
+    def get_time(self, obj):
+        # Convert start_time to Kerala Time (IST) and format with AM/PM
+        if obj.review_date:
+            review_date_kerala = obj.review_date.astimezone(pytz.timezone('Asia/Kolkata'))
+            return review_date_kerala.strftime('%I:%M %p')  # Time in 12-hour format with AM/PM
+        return None
+
 
 class ParkingStationSerializers(serializers.ModelSerializer):
     images = ParkingStationImages(read_only=True, many=True)
     pricing = ParkingChargeSerilizers(read_only=True, many=True)
     plots = AvailablePlotsSerilizets(read_only=True, many=True)
     reviews = ViewReviewSerializres(read_only=True, many=True)
+    
     class Meta :
         model = PlotOnwners
         fields = ['ownerID','owner_name','owner_email','owner_phone','owner_address','latitude','longitude','pricing','plots','images','reviews']
@@ -46,7 +61,7 @@ class ParkingStationSerializers(serializers.ModelSerializer):
 class CustomerParkingPlotReservationSerializers(serializers.ModelSerializer):
 
     class Meta:
-        model = ParkingReservation
+        model = ParkingReservationPayment
         fields = "__all__"  # or specify the exact fields if needed
 
     def validate(self, data):
@@ -89,7 +104,7 @@ class CustomerBookdPlots(serializers.ModelSerializer):
     No = serializers.CharField(source="plot_id.plot_no")
     
     class Meta :
-        model = ParkingReservation
+        model = ParkingReservationPayment
         fields = "__all__"  # or specify the exact fields if needed
 
     def get_start_date(self, obj):
@@ -120,7 +135,7 @@ class PaymentSerilizers(serializers.ModelSerializer):
     payment_time = serializers.SerializerMethodField()
 
     class Meta:
-        model = Payment
+        model = ParkingReservationPayment
         fields = ['_id','amount','payment_method','status','transaction_id','payment_date','payment_time']
 
     def get_payment_date(self, obj):
@@ -153,8 +168,10 @@ class CusomerPaymentDetails(serializers.ModelSerializer):
         
         
 class PaymentInitiationSerializer(serializers.Serializer):
-    reservation_id = serializers.UUIDField()
-    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    plot_id = serializers.IntegerField(required=True)
+    start_time = serializers.DateTimeField(required=True)
+    end_time = serializers.DateTimeField(required=True)
+    amount = serializers.DecimalField(required=True, max_digits=10, decimal_places=2)
 
     def validate_amount(self, value):
         """

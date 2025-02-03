@@ -20,7 +20,7 @@ urlpatterns = [
 
 
 
-    path("initiate/", RazorpayPaymentInitiation.as_view(), name="razorpay_payment_initiation"),
+    path("api/payment/initiate/", RazorpayPaymentInitiation.as_view(), name="razorpay_payment_initiation"),
     path("api/payment/verify/", RazorpayPaymentVerification.as_view(), name="razorpay_payment_verification"),
     
     

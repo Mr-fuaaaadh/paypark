@@ -109,62 +109,16 @@ class ParkingPlots(models.Model):
 
 
 
-class ParkingReservation(models.Model):
-    reservation_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    user_id = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='reservations')
-    plot_id = models.ForeignKey(ParkingPlots, on_delete=models.CASCADE, related_name='reservations')
-    start_time = models.DateTimeField(null=False)
-    end_time = models.DateTimeField(null=False)
-    STATUS_CHOICES = [
-        ('active', 'Active'),
-        ('completed', 'Completed'),
-        ('reserved', 'Reserved'),
-        ('cancelled', 'Cancelled'),
-    ]
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='reserved')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Reservation {self.reservation_id} - {self.status}"
-
-
-class Payment(models.Model):
-    _id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    user = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='payments')
-    reservation_id = models.ForeignKey(ParkingReservation, on_delete=models.CASCADE,related_name='payments')
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_method = models.CharField(max_length=20, choices=[
-        ('razorpay', 'Razorpay'),
-        ('cash', 'Cash')],
-    )
-    status = models.CharField(max_length=20,choices=[
-        ('pending', 'Pending'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed'),
-        ('refunded', 'Refunded')],
-        default='pending',
-    )
-    payment_date = models.DateTimeField(auto_now_add=True)
-    transaction_id = models.CharField(max_length=100, unique=True)
-    created_at = models.DateTimeField(default=timezone.now)
-
-
-
-    def __str__(self):
-        return f"Payment {self.payment_id} for Reservation {self.reservation_id}"
-
-
 class Review(models.Model):
     review_id = models.AutoField(primary_key=True)  
     user = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='reviews')  
     owner  = models.ForeignKey(PlotOnwners, on_delete=models.CASCADE, related_name='reviews')
     review_text = models.TextField() 
-    rating = models.PositiveSmallIntegerField()
+    rating = models.FloatField()
     review_date = models.DateTimeField(auto_now_add=True) 
 
     def __str__(self):
-        return f"Review {self.review_id} by User {self.user_id}"
+        return f"Review {self.owner.owner_name} by User {self.user.name}"
 
     class Meta:
         constraints = [
@@ -174,3 +128,57 @@ class Review(models.Model):
             )
         ]
         
+
+
+class ParkingReservationPayment(models.Model):
+    """
+    A combined model that tracks both the reservation details (slot, time, user)
+    and the payment details (amount, method, status, transaction IDs) in one place.
+    """
+    
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded')]
+    
+    RESERVATION_STATUS_CHOICES = [
+        ('reserved', 'Reserved'),
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    PAYMENT_METHOD_CHOICES = [
+        ('razorpay', 'Razorpay'),
+        ('cash', 'Cash'),]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='parking_reservations')
+    plot = models.ForeignKey(ParkingPlots, on_delete=models.CASCADE, related_name='reservations')
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+
+    reservation_status = models.CharField(max_length=10,choices=RESERVATION_STATUS_CHOICES,default='reserved')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    order_id = models.CharField(max_length=100, blank=True, null=True, help_text="Razorpay order_id or any external gateway order ID")
+    payment_id = models.CharField(max_length=100, blank=True, null=True, unique=True, help_text="Razorpay payment_id or any external gateway payment ID")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"ReservationPayment {self.id} - {self.reservation_status} / {self.payment_status}"
+
+    def mark_payment_completed(self, razorpay_payment_id=None):
+        """
+        Utility to update payment status to 'completed' once you verify success.
+        Optionally pass in the payment_id from Razorpay or another provider.
+        """
+        self.payment_status = 'completed'
+        if razorpay_payment_id:
+            self.payment_id = razorpay_payment_id
+        if self.reservation_status == 'reserved':
+            self.reservation_status = 'active'
+        self.save()

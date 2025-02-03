@@ -605,9 +605,7 @@ class ReservationManagementView(BaseDataView):
             
             
             
-
-            
-            
+           
 class AdmiViewAllParkingStations(BaseDataView):
     def get(self,request):
         try :
@@ -620,5 +618,3 @@ class AdmiViewAllParkingStations(BaseDataView):
             return Response({"data":serializer.data},status=status.HTTP_200_OK)
         except Exception as e :
             return self._server_error_response(message="An unexpected error occurred",error=str(e))
-        
-

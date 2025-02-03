@@ -24,10 +24,10 @@ def create_razorpay_order(amount, currency="INR"):
             "currency": currency,
             "payment_capture": 1,
         })
-        logger.info(f"Razorpay order created successfully: {order['id']}")
+        print(f"Razorpay order created successfully: {order['id']}")
         return order
     except Exception as e:
-        logger.error(f"Error creating Razorpay order: {str(e)}")
+        print(f"Error creating Razorpay order: {str(e)}")
         raise ValidationError("Failed to create Razorpay order. Please try again later.")
 
 
@@ -39,23 +39,24 @@ def verify_razorpay_signature(params_dict):
     """
     try:
         razorpay_client.utility.verify_payment_signature(params_dict)
-        logger.info("Payment signature verified successfully.")
+        print("Payment signature verified successfully.")
     except razorpay.errors.SignatureVerificationError as e:
-        logger.error("Payment signature verification failed.")
+        print("Payment signature verification failed.")
         raise ValidationError("Invalid payment signature.")
 
 
-def capture_razorpay_payment(payment_id, amount):
+def capture_razorpay_payment(razorpay_payment_id, amount):
     """
     Captures a Razorpay payment.
     Args:
-        payment_id (str): Razorpay payment ID.
+        razorpay_payment_id (str): Razorpay payment ID.
         amount (float): Amount to capture in INR.
     """
+    print("hbhjbvbvjfdbv:",razorpay_payment_id)
     try:
-        capture_response = razorpay_client.payment.capture(payment_id, int(amount * 100))
-        logger.info(f"Payment captured successfully: {payment_id}")
+        capture_response = razorpay_client.payment.capture(razorpay_payment_id, int(amount))
+        print(f"Payment captured successfully: {razorpay_payment_id}")
         return capture_response
     except Exception as e:
-        logger.error(f"Error capturing Razorpay payment: {str(e)}")
+        print(f"Error capturing Razorpay payment: {str(e)}")
         raise ValidationError("Failed to capture Razorpay payment. Please contact support.")

@@ -152,3 +152,6 @@ EMAIL_HOST_PASSWORD = 'imci azii rmjo ssxv'
 RAZORPAY_API_KEY = 'rzp_test_Et42z7W3O2fqxX'
 RAZORPAY_API_SECRET = '0SzesXHaLolGsw99JmP3DvXg'
 
+# settings.py
+
+CELERY_TASK_ALWAYS_EAGER = True
