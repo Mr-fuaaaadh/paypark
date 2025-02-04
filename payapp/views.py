@@ -49,9 +49,6 @@ class UserLoginAPIView(APIView):
             email = request.data.get('email')
             password = request.data.get('password')
             
-            print("Email   :",email)
-            print("Password   :",password)
-
             customer = Customer.objects.filter(email=email).first()
 
             if customer and check_password(password, customer.password):
@@ -73,7 +70,6 @@ class UserLoginAPIView(APIView):
             else:
                 return Response({"message": "Invalid email or password"}, status=status.HTTP_401_UNAUTHORIZED)
         except Exception as e:
-            print(e)
             return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -311,11 +307,11 @@ class UserPasswordReset(UserProfileEdit):
 
             # Check current password
             if not check_password(current_passwd, customer.password):
-                return self._bad_request({"message":"Current password is incorrect"})
+                return self._bad_request(message ="Current password is incorrect")
 
             # Check new password match
             if new_passwd != re_passwd:
-                return self._bad_request({"message":"New passwords do not match"})
+                return self._bad_request(message ="New passwords do not match")
 
             # Update password
             customer.password = make_password(new_passwd)
@@ -324,10 +320,10 @@ class UserPasswordReset(UserProfileEdit):
             return Response({"status": "success"}, status=status.HTTP_200_OK)
 
         except ValueError as ve:
-            return self._bad_request({"message": str(ve)})
+            return self._bad_request(message = str(ve))
 
         except AttributeError as ae:
-            return self._bad_request({"message": str(ae)})
+            return self._bad_request(message = str(ae))
 
         except Exception as e:
             return self._server_error_response(message = "An unexpected error occurred" , error = str(e))
@@ -402,9 +398,12 @@ class RazorpayPaymentInitiation(BaseTokenView):
         # Validate incoming data
         serializer = PaymentInitiationSerializer(data=request.data)
         if not serializer.is_valid():
+            print(serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         # Extract validated data
+        
+        print("egfg wefewf wefw")
         validated_data = serializer.validated_data
         plot_id = validated_data["plot_id"]
         start_time = validated_data["start_time"]  # Already a Python datetime
@@ -412,7 +411,6 @@ class RazorpayPaymentInitiation(BaseTokenView):
         amount = validated_data["amount"]
 
         # Debugging: Log the received data
-        print(f"Plot ID: {plot_id}, Start Time: {start_time}, End Time: {end_time}, Amount: {amount}")
 
         # Validate plot existence
         plot = get_object_or_404(ParkingPlots, pk=plot_id)
@@ -462,7 +460,6 @@ class RazorpayPaymentVerification(BaseTokenView):
             razorpay_order_id = request.data.get("razorpay_order_id")
             razorpay_payment_id = request.data.get("razorpay_payment_id")
             razorpay_signature = request.data.get("razorpay_signature")
-            print(f"Order ID: {razorpay_order_id}, Payment ID: {razorpay_payment_id}, Signature: {razorpay_signature}")
 
             if not razorpay_order_id or not razorpay_payment_id or not razorpay_signature:
                 return Response({"error": "Incomplete payment details."}, status=status.HTTP_400_BAD_REQUEST)
@@ -473,44 +470,44 @@ class RazorpayPaymentVerification(BaseTokenView):
             return Response({"message": "Payment verification initiated."}, status=status.HTTP_202_ACCEPTED)
 
         except Exception as e:
-            print(f"andi kunna{e}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
 def verify_and_capture_payment(razorpay_order_id, razorpay_payment_id, razorpay_signature, customer_id):
     try:
+        # Fetch the customer
         customer = Customer.objects.get(pk=customer_id)
-        print("Fetched customer: %s", customer)
 
+        # Verify Razorpay signature
         params_dict = {
             "razorpay_order_id": razorpay_order_id,
             "razorpay_payment_id": razorpay_payment_id,
             "razorpay_signature": razorpay_signature,
         }
-        print("Verifying Razorpay signature with params: %s", params_dict)
         verify_razorpay_signature(params_dict)
-        print("Razorpay signature verified successfully.")
 
-        payment = get_object_or_404(ParkingReservationPayment, order_id=razorpay_order_id, user=customer)
-        print("Fetched payment: %s", payment)
+        # Fetch the payment object
+        payment = get_object_or_404(ParkingReservationPayment, order_id=razorpay_order_id, user=customer.pk)
 
-        print("Attempting to capture payment via Razorpay API...")
+        # Attempt to capture payment
         capture_razorpay_payment(razorpay_payment_id, payment.amount)
-        print("Payment captured successfully.")
 
+        # ✅ Correctly update payment status and save transaction ID
         payment.payment_status = "completed"
+        payment.payment_id = razorpay_payment_id  # Assuming you have a field for storing transaction IDs
         payment.save()
-        print("Payment status updated to completed.")
+
+        return {"status": "success", "message": "Payment captured successfully", "payment_id": razorpay_payment_id}
 
     except Exception as e:
-        print("Error during payment verification/capture: %s", e)
+        # Ensure payment status is updated to "failed" if it exists
         payment = ParkingReservationPayment.objects.filter(order_id=razorpay_order_id).first()
         if payment:
             payment.payment_status = "failed"
             payment.save()
-            print("Payment status updated to failed.")
-        raise e
+
+        raise ValidationError("Payment verification/capture failed. Please try again.")
 
 
 
