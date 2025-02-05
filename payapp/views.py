@@ -398,12 +398,10 @@ class RazorpayPaymentInitiation(BaseTokenView):
         # Validate incoming data
         serializer = PaymentInitiationSerializer(data=request.data)
         if not serializer.is_valid():
-            print(serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         # Extract validated data
         
-        print("egfg wefewf wefw")
         validated_data = serializer.validated_data
         plot_id = validated_data["plot_id"]
         start_time = validated_data["start_time"]  # Already a Python datetime
