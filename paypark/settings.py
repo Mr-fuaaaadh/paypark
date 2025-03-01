@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-we=5nwo=%fdkdx_!2o()szmpohmgc+lhc_^aw%n#pnt-ak$3%q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 JWT_EXPIRATION_MINUTES = 43200 
 
