@@ -82,12 +82,24 @@ WSGI_APPLICATION = 'paypark.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'paypark',   # Replace with your DB name
+        'USER': 'postgres',        # Replace with your DB username
+        'PASSWORD': 'paypark123',    # Replace with your DB password
+        'HOST': 'database-2.cfkow6wii8w5.eu-north-1.rds.amazonaws.com',            # Change if using a remote DB
+        'PORT': '5432',                 # Default PostgreSQL port
     }
 }
+
 
 
 # Password validation
