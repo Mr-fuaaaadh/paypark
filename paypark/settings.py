@@ -28,7 +28,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['13.60.216.198','0.0.0.0', 'localhost', '127.0.0.1']
 CSRF_TRUSTED_ORIGINS = ['http://13.60.216.198']
-
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3001",  
+    "http://13.60.216.198",  
+]
 
 JWT_EXPIRATION_MINUTES = 43200 
 
@@ -54,6 +57,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
