@@ -27,12 +27,15 @@ SECRET_KEY = 'django-insecure-we=5nwo=%fdkdx_!2o()szmpohmgc+lhc_^aw%n#pnt-ak$3%q
 DEBUG = True
 
 ALLOWED_HOSTS = ['13.60.216.198','0.0.0.0', 'localhost', '127.0.0.1']
+
 CSRF_TRUSTED_ORIGINS = ['http://13.60.216.198']
+
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3001",  
+    "http://localhost:3000",  
     "http://13.60.216.198",  
 ]
 
+CORS_ALLOW_ALL_ORIGINS = True
 JWT_EXPIRATION_MINUTES = 43200 
 
 
