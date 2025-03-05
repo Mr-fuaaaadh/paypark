@@ -425,7 +425,7 @@ class CustomerGetAllVehiclesType(BaseTokenView):
 
 class GetAllParkStations(BaseTokenView):
 
-    @method_decorator(cache_page(60 * 15))  # Cache response for 15 minutes
+    @method_decorator(cache_page(10 * 15))  # Cache response for 15 minutes
     def get(self, request):
         cache_key = "all_park_stations"
         cached_data = cache.get(cache_key)
