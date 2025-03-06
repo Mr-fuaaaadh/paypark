@@ -492,6 +492,8 @@ class RazorpayPaymentInitiation(BaseTokenView):
     def post(self, request):
         # Extract user from token
         user_id, _ = self.get_user_from_token(request)
+        if not user_id:
+            return Response({"error": "Authentication failed."}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Validate incoming data
         serializer = PaymentInitiationSerializer(data=request.data)
