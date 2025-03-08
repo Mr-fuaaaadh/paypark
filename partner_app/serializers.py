@@ -74,12 +74,12 @@ class ParkOwnerAllDatasFetching(serializers.ModelSerializer):
             'images',
             'pricing',
             'plots',
-            'reservations',
+            # 'reservations',
             'payments'
         ]
 
     def get_payments(self,obj):
-        payment  = ParkingReservationPayment.objects.filter(reservation_id__plot_id__owner_id = obj.id)
+        payment  = ParkingReservationPayment.objects.filter(plot = obj.id)
         serializer = PaymentModelSerializers(payment, many=True)
         return serializer.data
         
