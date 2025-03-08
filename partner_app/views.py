@@ -138,18 +138,19 @@ class ParkOwnersRegistration(BaseDataView):
             return self._server_error_response({"message": "An unexpected error occurred", "error": f"{str(e)}"})
 
         
-class ParOwnerLogin(BaseDataView):
+class ParOwnerLogin(APIView):
     def post(self, request):
+        owner_phone = request.data.get('owner_phone')
+        owner_pass = request.data.get('owner_pass')
+        
+        if not owner_phone or not owner_pass:
+            return Response({"message": "Phone and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            # Retrieve credentials from the request
-            owner_phone = request.data.get('owner_phone')
-            owner_pass = request.data.get('owner_pass')
-            print(f"Owner Phone: {owner_phone}, Owner Password: {owner_pass}")
-
-            # Query the database for the user
+            # Retrieve user
             park_owner = PlotOnwners.objects.filter(owner_phone=owner_phone).first()
             if not park_owner:
-                return self._not_found_response({"message": "User not found"})
+                return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
             # Verify password
             if not check_password(owner_pass, park_owner.password):
@@ -158,7 +159,7 @@ class ParOwnerLogin(BaseDataView):
             # Generate JWT token
             expiration_time = datetime.utcnow() + timedelta(minutes=getattr(settings, 'JWT_EXPIRATION_MINUTES', 60))
             user_token = {
-                'id': str(park_owner.ownerID),  # Convert UUID to string
+                'id': str(park_owner.ownerID),
                 'phone': park_owner.owner_phone,
                 'name': park_owner.owner_name,
                 'exp': expiration_time,
@@ -166,15 +167,15 @@ class ParOwnerLogin(BaseDataView):
             }
             token = jwt.encode(user_token, settings.SECRET_KEY, algorithm='HS256')
 
-            # Return success response with the token
             return Response({
                 "status": "success",
                 "token": token,
                 "name": park_owner.owner_name,
             }, status=status.HTTP_200_OK)
-
+        
         except Exception as e:
-            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"message": "An unexpected error occurred", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 
