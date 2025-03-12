@@ -108,8 +108,7 @@ DATABASES = {
         'HOST': 'database-2.cfkow6wii8w5.eu-north-1.rds.amazonaws.com',            # Change if using a remote DB
         'PORT': '5432',                 # Default PostgreSQL port
     }
-}
-
+}           
 
 
 # Password validation

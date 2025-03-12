@@ -75,7 +75,6 @@ class ParkOwnerAllDatasFetching(serializers.ModelSerializer):
             'images',
             'pricing',
             'plots',
-            # 'reservations',
             'payments'
         ]
 
@@ -85,7 +84,23 @@ class ParkOwnerAllDatasFetching(serializers.ModelSerializer):
         return serializer.data
         
 
+class ReviewSerializer(serializers.ModelSerializer):
+    owner_name = serializers.CharField(source="owner.owner_name")
+    class Meta:
+        model = Review
+        fields = ['owner','owner_name','review_text','rating','review_date']
+
+
+class ParkingReservationPaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParkingReservationPayment
+        fields = ['id', 'amount', 'payment_method', 'payment_status', 'order_id', 'payment_id', 'created_at']
+
+
 class CustomerSerializers(serializers.ModelSerializer):
+    reviews = ReviewSerializer(read_only=True, many=True)
+    payments = ParkingReservationPaymentSerializer(read_only=True, many=True)
     class Meta:
         model = Customer
-        fields = "__all__"
+        fields = ['_id', 'name', 'email', 'phone_number', 'profile_image', 'reviews','model_number','vehicle_number','payments']
+

@@ -18,6 +18,8 @@ from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.cache import cache
 from django.db import DatabaseError
+from django.db.models import Prefetch
+from django.db.models import F
 
 logger = logging.getLogger(__name__)
 
@@ -566,17 +568,38 @@ class ParkingPlotManagementView(BaseDataView):
  
                     
 class AdmiViewAllParkingStations(BaseDataView):
-    def get(self,request):
-        try :
-            user, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-            
-            parking_stations = PlotOnwners.objects.all()
+    def get(self, request):
+        try:
+            # Try fetching cached data first
+            cache_key = 'all_parking_stations_data'
+            cached_data = cache.get(cache_key)
+
+            if cached_data:
+                return Response({"data": cached_data}, status=status.HTTP_200_OK)
+
+            # user, error_response = self.get_user_from_token(request)
+            # if error_response:
+            #     return error_response
+
+            # Prefetch related fields for optimization
+            # Use select_related if you need single related objects and prefetch_related if it's a one-to-many relationship
+            parking_stations = PlotOnwners.objects.prefetch_related(
+                Prefetch('images'), 
+                Prefetch('pricing'), 
+                Prefetch('plots'),
+            ).only('id', 'owner_name', 'owner_email', 'latitude', 'longitude', 'account_number', 'ifsc_code').all()
+
+            # Serialize data
             serializer = ParkOwnerAllDatasFetching(parking_stations, many=True)
-            return Response({"data":serializer.data},status=status.HTTP_200_OK)
-        except Exception as e :
-            return self._server_error_response(message="An unexpected error occurred",error=str(e))
+            data = serializer.data
+            
+            # Cache the response for 5 minutes (you can adjust this based on your needs)
+            cache.set(cache_key, data, timeout=300)
+            
+            return Response({"data": data}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
         
 
 class AdminAllCustomers(BaseDataView):
@@ -587,13 +610,8 @@ class AdminAllCustomers(BaseDataView):
             if cached_data:
                 return Response({"data": cached_data}, status=status.HTTP_200_OK)
 
-            # Fetch user from token
-            user, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-            
-            # Query database for customers
-            customers = Customer.objects.all()
+            # Fetch customers with related reviews in a single query
+            customers = Customer.objects.prefetch_related('reviews__owner','payments').all()
             serializer = CustomerSerializers(customers, many=True)
             
             # Cache the data for 5 minutes to reduce DB load
@@ -612,7 +630,8 @@ class AdminAllCustomers(BaseDataView):
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
 
     def _server_error_response(self, message, error):
-        return Response(
-            {"message": message, "error": error},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"message": message, "error": error},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
