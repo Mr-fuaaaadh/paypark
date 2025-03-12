@@ -63,7 +63,7 @@ class BaseDataView(APIView):
         if not user_id:
             return None
         
-        user = get_object_or_404(PlotOnwners, ownerID=user_id)
+        user = get_object_or_404(PlotOnwners, ownerID=user_id, is_active=True)
         logger.debug(f"Found user: {user}")
         return user
 
@@ -164,7 +164,7 @@ class ParOwnerLogin(APIView):
             user_token = {
                 'id': str(park_owner.ownerID),
                 'phone': park_owner.owner_phone,
-                'name': park_owner.owner_name,
+                'role': park_owner.role,
                 'exp': expiration_time,
                 'iat': datetime.utcnow()
             }
