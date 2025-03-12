@@ -2,6 +2,7 @@ import jwt
 import random
 import logging
 from .models import *
+from partner_app.models import *
 from django.conf import settings
 from rest_framework import status
 from django.core.mail import send_mail
@@ -15,8 +16,8 @@ from django.template.loader import render_to_string
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
-
-
+from django.core.cache import cache
+from django.db import DatabaseError
 
 logger = logging.getLogger(__name__)
 
@@ -576,3 +577,42 @@ class AdmiViewAllParkingStations(BaseDataView):
             return Response({"data":serializer.data},status=status.HTTP_200_OK)
         except Exception as e :
             return self._server_error_response(message="An unexpected error occurred",error=str(e))
+        
+
+class AdminAllCustomers(BaseDataView):
+    def get(self, request):
+        try:
+            # Check cache first
+            cached_data = cache.get('all_customers_data')
+            if cached_data:
+                return Response({"data": cached_data}, status=status.HTTP_200_OK)
+
+            # Fetch user from token
+            user, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            # Query database for customers
+            customers = Customer.objects.all()
+            serializer = CustomerSerializers(customers, many=True)
+            
+            # Cache the data for 5 minutes to reduce DB load
+            cache.set('all_customers_data', serializer.data, timeout=300)
+            
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist as e:
+            logger.error(f"Object not found: {str(e)}")
+            return self._server_error_response(message="Customer data not found", error=str(e))
+        except DatabaseError as e:
+            logger.error(f"Database error: {str(e)}")
+            return self._server_error_response(message="Database error occurred", error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+
+    def _server_error_response(self, message, error):
+        return Response(
+            {"message": message, "error": error},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

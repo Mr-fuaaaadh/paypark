@@ -14,6 +14,9 @@ urlpatterns = [
     path('admin/reset/password/',AdminOrPlotOwnerPasswordReset.as_view()),
     path('admin/profile/',AdminOrProfileOwnerDetailsView.as_view()),
 
+    path('admin/customers/',AdminAllCustomers.as_view()),
+
+
     path('admin/vehicle/',VehicleManagementView.as_view()),
     path('admin/vehicle/<int:pk>/edit/',VehicleManagementView.as_view()),
 

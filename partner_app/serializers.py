@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import *
+from partner_app.models import *
 
 class ParkOwnerSerializers(serializers.ModelSerializer):
     class Meta :
@@ -84,3 +85,7 @@ class ParkOwnerAllDatasFetching(serializers.ModelSerializer):
         return serializer.data
         
 
+class CustomerSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = "__all__"
