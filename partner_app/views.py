@@ -577,9 +577,9 @@ class AdmiViewAllParkingStations(BaseDataView):
             if cached_data:
                 return Response({"data": cached_data}, status=status.HTTP_200_OK)
 
-            # user, error_response = self.get_user_from_token(request)
-            # if error_response:
-            #     return error_response
+            user, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
 
             # Prefetch related fields for optimization
             # Use select_related if you need single related objects and prefetch_related if it's a one-to-many relationship
@@ -609,6 +609,12 @@ class AdminAllCustomers(BaseDataView):
             cached_data = cache.get('all_customers_data')
             if cached_data:
                 return Response({"data": cached_data}, status=status.HTTP_200_OK)
+            
+
+            user, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
 
             # Fetch customers with related reviews in a single query
             customers = Customer.objects.prefetch_related('reviews__owner','payments').all()
@@ -635,3 +641,19 @@ class AdminAllCustomers(BaseDataView):
 
 
 
+class AllParkingReservations(BaseDataView):
+    def get(self, request):
+        try:
+            user, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            if user.role != 'admin':
+                reservations = ParkingReservationPayment.objects.filter(plot__owner_id=user.pk)
+                serializer = ParkingReservatonSerializers(reservations, many=True)
+            else :
+                reservations = ParkingReservationPayment.objects.all()
+                serializer = ParkingReservatonSerializers(reservations, many=True)
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))

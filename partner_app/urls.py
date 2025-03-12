@@ -32,6 +32,7 @@ urlpatterns = [
 
     # path('owner/parking/reservations/', ReservationManagementView.as_view()),
     path('admin/parking/stations/', AdmiViewAllParkingStations.as_view()),
+    path('admin/parking/reservations/', AllParkingReservations.as_view()),
 
 
 
