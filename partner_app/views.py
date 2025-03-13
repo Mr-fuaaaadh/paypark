@@ -20,7 +20,8 @@ from django.core.cache import cache
 from django.db import DatabaseError
 from django.db.models import Prefetch
 from django.db.models import F
-
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
 logger = logging.getLogger(__name__)
 
 
@@ -642,18 +643,58 @@ class AdminAllCustomers(BaseDataView):
 
 
 class AllParkingReservations(BaseDataView):
+    CACHE_KEY = "parking_reservations"
+    CACHE_TIMEOUT = 300  # Cache timeout in seconds (5 minutes)
+
     def get(self, request):
         try:
             user, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
             
+            cache_key = f"{self.CACHE_KEY}_{user.pk if user.role != 'admin' else 'all'}"
+            cached_data = cache.get(cache_key)
+            
+            if cached_data:
+                print("Fetching from cache")
+                return Response({"data": cached_data}, status=status.HTTP_200_OK)
+            
+            # Optimize query using select_related to fetch related data in a single query
             if user.role != 'admin':
-                reservations = ParkingReservationPayment.objects.filter(plot__owner_id=user.pk)
-                serializer = ParkingReservatonSerializers(reservations, many=True)
-            else :
-                reservations = ParkingReservationPayment.objects.all()
-                serializer = ParkingReservatonSerializers(reservations, many=True)
+                reservations = ParkingReservationPayment.objects.select_related(
+                    'user', 'plot__owner_id'
+                ).filter(plot__owner_id=user.pk)
+            else:
+                reservations = ParkingReservationPayment.objects.select_related(
+                    'user', 'plot__owner_id'
+                ).all()
+            
+            serializer = ParkingReservationSerializer(reservations, many=True)
+            cache.set(cache_key, serializer.data, self.CACHE_TIMEOUT)  # Store in cache
+            
             return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+        
+        except ParkingReservationPayment.DoesNotExist:
+            return Response({"error": "No reservations found"}, status=status.HTTP_404_NOT_FOUND)
+        
         except Exception as e:
-            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+            return self._server_error_response(
+                message="An unexpected error occurred", error=str(e)
+            )
+
+    @staticmethod
+    def update_cache():
+        cache.delete_pattern("parking_reservations_*")  # Clear all cached reservations
+
+    @staticmethod
+    def clear_instance_cache(instance):
+        user_cache_key = f"parking_reservations_{instance.user.pk}"
+        admin_cache_key = "parking_reservations_all"
+        cache.delete(user_cache_key)
+        cache.delete(admin_cache_key)
+
+# Hook to update cache when table data changes (signal-based approach)
+@receiver(post_save, sender=ParkingReservationPayment)
+@receiver(post_delete, sender=ParkingReservationPayment)
+def clear_cache_on_update(sender, instance, **kwargs):
+    AllParkingReservations.clear_instance_cache(instance)

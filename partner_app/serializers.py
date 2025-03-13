@@ -44,11 +44,14 @@ class PaymentModelSerializers(serializers.ModelSerializer):
         model = ParkingReservationPayment
         fields = "__all__"
         
-class ParkingReservatonSerializers(serializers.ModelSerializer):
+class ParkingReservationSerializer(serializers.ModelSerializer):
     reservations = PaymentModelSerializers(read_only=True, many=True)
-    class Meta :
+    customer_name = serializers.CharField(source="user.name", read_only=True)
+    station_name = serializers.CharField(source="plot.owner_id.owner_name", read_only=True)
+
+    class Meta:
         model = ParkingReservationPayment
-        fields = "__all__"     
+        fields = "__all__"   
         
 class ParkOwnerAllDatasFetching(serializers.ModelSerializer):
     images = ParkingStationImages(many=True, read_only=True)
