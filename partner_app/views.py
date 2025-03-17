@@ -344,7 +344,7 @@ class AdminOrProfileOwnerDetailsView(BaseDataView):
             return Response(serializer.data, status=status.HTTP_200_OK)
     
         except Exception as e:
-            return None, self._server_error_response({"message": "An unexpected error occurred", "error": str(e)})
+            return None, self._server_error_response(message= "An unexpected error occurred", error = str(e))
 
     def put(self, request):
         try:
