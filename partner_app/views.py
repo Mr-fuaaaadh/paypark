@@ -340,11 +340,25 @@ class AdminOrProfileOwnerDetailsView(BaseDataView):
     def get(self, request):
         try:
             user = self._admin_authenticate(request)
-            serializer = ParkOwnerSerializers(user)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-    
+            
+            if isinstance(user, Response):
+                return user  # Directly return the Response if authentication fails
+            
+            plot_owner = PlotOnwners.objects.get(owner_email=user.owner_email)  # Fetch using email
+
+            serializer = ParkOwnerSerializers(plot_owner) 
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+
+        except PlotOnwners.DoesNotExist:
+            return Response({"error": "Plot owner not found"}, status=status.HTTP_404_NOT_FOUND)
+
         except Exception as e:
-            return None, self._server_error_response(message= "An unexpected error occurred", error = str(e))
+            return self._server_error_response(
+                message="An unexpected error occurred",
+                error=str(e),
+            )
+
+
 
     def put(self, request):
         try:
