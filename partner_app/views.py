@@ -721,8 +721,6 @@ class CustomersManagementView(BaseDataView):
         """Retrieve all customers or a specific customer by ID."""
         try:
             user = self._admin_authenticate(request)
-            print(user.role)
-
             if user.role != 'admin':
                 return self._unauthorized_response("You are not authorized to access this resource")
             
@@ -788,7 +786,6 @@ class AllParkingReservations(BaseDataView):
             cached_data = cache.get(cache_key)
             
             if cached_data:
-                print("Fetching from cache")
                 return Response({"data": cached_data}, status=status.HTTP_200_OK)
             
             # Optimize query using select_related to fetch related data in a single query
