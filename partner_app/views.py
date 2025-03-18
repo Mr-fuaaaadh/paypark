@@ -668,6 +668,19 @@ class AdminPArkingStationManagement(BaseDataView):
         
 
 class AdminAllCustomers(BaseDataView):
+    def post(self, request):
+        try:
+            user = self._admin_authenticate(request)
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
+            
+            serializer = CustomerSerializers(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return self._success_response(message="Customer created successfully")
+            return self._bad_request(message=serializer.errors)
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
     def get(self, request):
         try:
             # Check cache first
