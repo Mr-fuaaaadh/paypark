@@ -595,6 +595,9 @@ class AdmiViewAllParkingStations(BaseDataView):
             user, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+            
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
 
             # Prefetch related fields for optimization
             # Use select_related if you need single related objects and prefetch_related if it's a one-to-many relationship
@@ -615,6 +618,53 @@ class AdmiViewAllParkingStations(BaseDataView):
         
         except Exception as e:
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
+        
+
+
+
+class AdminPArkingStationManagement(BaseDataView):
+    def get(self,request,pk):
+        try :
+            user = self._admin_authenticate(request)
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
+            
+            parking_station = get_object_or_404(PlotOnwners, pk=pk)
+            serializer = ParkOwnerSerializers(parking_station)
+            return Response({"data":serializer.data},status=status.HTTP_200_OK)
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+        
+    def put(self,request,pk):
+        try :
+            user = self._admin_authenticate(request)
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
+            
+            parking_station = get_object_or_404(PlotOnwners, pk=pk)
+            serializer = ParkOwnerSerializers(parking_station, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return self._success_response(message="Parking station updated successfully")
+            return self._bad_request(message=serializer.errors)
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+        
+    def patch(self,request,pk):
+        try :
+            user = self._admin_authenticate(request)
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
+            
+            is_active = request.data.get("is_active", False)
+            updated = PlotOnwners.objects.filter(pk=pk).update(is_active=is_active)
+            if updated:
+                status_message = "unblocked" if is_active else "blocked"
+                return self._success_response(message=f"Parking station {status_message} successfully")
+            return self._bad_request(message="Parking station not found")
+        except Exception as e :
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+            
         
 
 class AdminAllCustomers(BaseDataView):
@@ -650,9 +700,64 @@ class AdminAllCustomers(BaseDataView):
             logger.error(f"Unexpected error: {str(e)}")
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
 
-    def _server_error_response(self, message, error):
-        return Response({"message": message, "error": error},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+class CustomersManagementView(BaseDataView):
+    
+    def get(self, request, pk=None):
+        """Retrieve all customers or a specific customer by ID."""
+        try:
+            user = self._admin_authenticate(request)
+            print(user.role)
+
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
+            
+            if pk:
+                customer = get_object_or_404(Customer.objects.only('id', 'name', 'email', 'is_active'), pk=pk)
+                serializer = CustomerSerializers(customer)
+            else:
+                customers = Customer.objects.only('id', 'name', 'email', 'is_active')
+                serializer = CustomerSerializers(customers, many=True)
+                
+            return Response({"status": "success", "data": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+
+    def put(self, request, pk):
+        """Update customer details."""
+        try:
+            user = self._admin_authenticate(request)
+
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
+            
+            customer = get_object_or_404(Customer, pk=pk)
+            serializer = CustomerSerializers(customer, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Customer updated successfully", "data": serializer.data}, status=status.HTTP_200_OK)
+            return Response({"status": "error", "message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
+
+    def patch(self, request, pk):
+        """Block or unblock a customer by updating is_active field."""
+        try:
+            user = self._admin_authenticate(request)
+
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
+            
+            is_active = request.data.get("is_active", False)  # Default to False (block)
+            updated = Customer.objects.filter(pk=pk).update(is_active=is_active)
+            
+            if updated:
+                status_message = "unblocked" if is_active else "blocked"
+                return Response({"status": "success", "message": f"Customer {status_message} successfully"}, status=status.HTTP_200_OK)
+            return Response({"status": "error", "message": "Customer not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
 
 
 

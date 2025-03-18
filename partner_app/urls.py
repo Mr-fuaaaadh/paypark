@@ -15,6 +15,10 @@ urlpatterns = [
     path('admin/profile/',AdminOrProfileOwnerDetailsView.as_view()),
 
     path('admin/customers/',AdminAllCustomers.as_view()),
+    path('admin/customers/<int:pk>/edit/',CustomersManagementView.as_view()),
+
+    path('admin/parking/stations/', AdmiViewAllParkingStations.as_view()),
+    path('admin/parking/stations/<int:pk>/edit/',AdminPArkingStationManagement.as_view()),
 
 
     path('admin/vehicle/',VehicleManagementView.as_view()),
@@ -31,7 +35,7 @@ urlpatterns = [
     path('owner/parking/plots/<int:pk>/management/', ParkingPlotManagementView.as_view()),
 
     # path('owner/parking/reservations/', ReservationManagementView.as_view()),
-    path('admin/parking/stations/', AdmiViewAllParkingStations.as_view()),
+    
     path('admin/parking/reservations/', AllParkingReservations.as_view()),
 
 

@@ -105,5 +105,5 @@ class CustomerSerializers(serializers.ModelSerializer):
     payments = ParkingReservationPaymentSerializer(read_only=True, many=True)
     class Meta:
         model = Customer
-        fields = ['_id', 'name', 'email', 'phone_number', 'profile_image', 'reviews','model_number','vehicle_number','payments']
+        fields = ['_id', 'name', 'email', 'phone_number', 'profile_image', 'reviews','model_number','vehicle_number','payments','is_active']
 
