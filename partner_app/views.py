@@ -124,11 +124,6 @@ class BaseDataView(APIView):
             html_message=email_body
         )
 
-    
-
-
-    
-
 
 class ParkOwnersRegistration(BaseDataView):
     def post(self,request):
@@ -152,7 +147,7 @@ class ParOwnerLogin(APIView):
         
         try:
             # Retrieve user
-            park_owner = PlotOnwners.objects.filter(owner_phone=owner_phone).first()
+            park_owner = PlotOnwners.objects.filter(owner_phone=owner_phone,  is_active = True).first()
             if not park_owner:
                 return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -827,3 +822,20 @@ class AllParkingReservations(BaseDataView):
 @receiver(post_delete, sender=ParkingReservationPayment)
 def clear_cache_on_update(sender, instance, **kwargs):
     AllParkingReservations.clear_instance_cache(instance)
+
+
+
+class ReviewManagementView(BaseDataView):
+    def get(self, request):
+        try:
+            user = self._admin_authenticate(request)
+
+            if user.role == 'admin':
+                reviews = Review.objects.select_related('owner').all()
+            else:
+                reviews = Review.objects.select_related('owner').filter(owner=user)
+            serializer = ReviewSerializer(reviews, many=True)
+            return Response({"status": "success", "data": serializer.data},status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))

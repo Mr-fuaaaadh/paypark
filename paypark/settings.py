@@ -103,10 +103,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'paypark',   
-        'USER': 'postgres',        # Replace with your DB username
-        'PASSWORD': 'paypark123',    # Replace with your DB password
-        'HOST': 'database-2.cfkow6wii8w5.eu-north-1.rds.amazonaws.com',            # Change if using a remote DB
-        'PORT': '5432',                 # Default PostgreSQL port
+        'USER': 'postgres',        
+        'PASSWORD': 'paypark123',   
+        'HOST': 'database-2.cfkow6wii8w5.eu-north-1.rds.amazonaws.com',     
+        'PORT': '5432',
     }
 }           
 
