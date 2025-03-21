@@ -91,7 +91,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     owner_name = serializers.CharField(source="owner.owner_name")
     class Meta:
         model = Review
-        fields = ['owner','owner_name','review_text','rating','review_date']
+        fields = ['review_id','owner','owner_name','review_text','rating','review_date']
 
 
 class ParkingReservationPaymentSerializer(serializers.ModelSerializer):

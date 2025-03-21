@@ -839,3 +839,15 @@ class ReviewManagementView(BaseDataView):
 
         except Exception as e:
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
+        
+
+    def delete(self, request, pk):
+        try:
+            user = self._admin_authenticate(request)
+            if user.role != 'admin':
+                return self._unauthorized_response("You are not authorized to access this resource")
+            review = get_object_or_404(Review, review_id=pk)
+            review.delete()
+            return self._success_response(message="Review deleted successfully")
+        except Exception as e:
+            return self._server_error_response(message="An unexpected error occurred", error=str(e))
