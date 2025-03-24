@@ -532,16 +532,25 @@ class VehiclePriceManagmentView(BaseDataView):
 
 
 class ParkingPlotManagementView(BaseDataView):
-    def post(self,request):
-        try :
+    def post(self, request):
+        try:
             user = self._admin_authenticate(request)
-            request.data['owner_id']=user.pk
-            serializer = ParkingPlotsSerializrs(data=request.data)
+            if user is None:
+                return self._unauthorized_response("You are not authorized to access this resource")
+
+            # Ensure request.data is mutable before modifying it
+            data = request.data.copy()
+            data['owner_id'] = user.pk
+
+            serializer = ParkingPlotsSerializrs(data=data)
             if serializer.is_valid():
                 serializer.save()
-                return self._success_response(message="Plot succesfully addedd")
+                return self._success_response(message="Plot successfully added")
+
             return self._bad_request(message=serializer.errors)
-        except Exception as e :
+
+        except Exception as e:
+            # Log error for debugging
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
 
     def get(self,request):
