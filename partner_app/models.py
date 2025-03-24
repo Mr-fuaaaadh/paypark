@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
 from datetime import datetime, timedelta
+from django.utils import timezone  # Import timezone
 from paypark_user.models import Customer
 from django.utils import timezone
 
@@ -97,7 +98,7 @@ class ParkingPlots(models.Model):
     owner_id = models.ForeignKey(PlotOnwners, on_delete=models.CASCADE,related_name="plots")
     plot_no = models.CharField(max_length=10, unique=True, editable=False)
     status = models.CharField(max_length=20)
-    created_at = models.DateTimeField(default=datetime.now) 
+    created_at = models.DateTimeField(default=timezone.now) 
 
     def save(self, *args, **kwargs):
         # Automatically generate plot number if not provided
