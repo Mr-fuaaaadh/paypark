@@ -396,8 +396,10 @@ class VehicleManagementView(BaseDataView):
         """Update an existing vehicle."""
         try:
             user = self._admin_authenticate(request)
+            if user is None:
+                return self._unauthorized_response("You are not authorized to access this resource")
             vehicle = self._get_vehicle(pk)
-            serializer = VehicleManagementSerializer(vehicle, data=request.data)
+            serializer = VehicleManagementSerializer(vehicle, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()  # Update vehicle record
                 return Response({"message": "Vehicle updated successfully."}, status=status.HTTP_200_OK)
@@ -412,6 +414,9 @@ class VehicleManagementView(BaseDataView):
         """Partially update an existing vehicle."""
         try:
             user = self._admin_authenticate(request)
+            if user is None:
+                return self._unauthorized_response("You are not authorized to access this resource")
+            
             vehicle = self._get_vehicle(pk)
             serializer = VehicleManagementSerializer(vehicle, data=request.data, partial=True)
             if serializer.is_valid():
@@ -428,9 +433,11 @@ class VehicleManagementView(BaseDataView):
         """Delete an existing vehicle."""
         try:
             user = self._admin_authenticate(request)
+            if user is None :
+                return self._unauthorized_response("You are not authorized to access this resource")
             vehicle = self._get_vehicle(pk)
             vehicle.delete()  # Perform deletion
-            return Response({"message": "Vehicle deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+            return Response({"message": "Vehicle deleted successfully."}, status=status.http_200_OK)
         
         except Vehicle.DoesNotExist:
             return Response({"message": "Vehicle not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -609,7 +616,8 @@ class AdmiViewAllParkingStations(BaseDataView):
                 Prefetch('images'), 
                 Prefetch('pricing'), 
                 Prefetch('plots'),
-            ).only('id', 'owner_name', 'owner_email', 'latitude', 'longitude', 'account_number', 'ifsc_code').all()
+            ).only('id', 'owner_n '
+            'me', 'owner_email', 'latitude', 'longitude', 'account_number', 'ifsc_code').all()
 
             # Serialize data
             serializer = ParkOwnerAllDatasFetching(parking_stations, many=True)
