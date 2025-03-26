@@ -433,20 +433,28 @@ class VehicleManagementView(BaseDataView):
         """Delete an existing vehicle."""
         try:
             user = self._admin_authenticate(request)
-            if user is None :
+            if user is None:
                 return self._unauthorized_response("You are not authorized to access this resource")
+
             vehicle = self._get_vehicle(pk)
+            if vehicle is None:
+                return Response({"message": "Vehicle not found."}, status=status.HTTP_404_NOT_FOUND)
+
             vehicle.delete()  # Perform deletion
-            return Response({"message": "Vehicle deleted successfully."}, status=status.http_200_OK)
-        
-        except Vehicle.DoesNotExist:
-            return Response({"message": "Vehicle not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"message": "Vehicle deleted successfully."}, status=status.HTTP_200_OK)
+
         except Exception as e:
-            return self._server_error_response(message="An unexpected error occurred. Please try again later.",error=str(e))
+            return self._server_error_response(
+                message="An unexpected error occurred. Please try again later.",
+                error=str(e)
+            )
 
     def _get_vehicle(self, pk):
         """Helper function to retrieve a vehicle instance."""
-        return get_object_or_404(Vehicle,pk=pk)
+        try:
+            return Vehicle.objects.get(pk=pk)
+        except Vehicle.DoesNotExist:
+            return None
 
 
 
