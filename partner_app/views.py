@@ -624,8 +624,7 @@ class AdmiViewAllParkingStations(BaseDataView):
                 Prefetch('images'), 
                 Prefetch('pricing'), 
                 Prefetch('plots'),
-            ).only('id', 'owner_n '
-            'me', 'owner_email', 'latitude', 'longitude', 'account_number', 'ifsc_code').all()
+            ).only('id', 'owner_name', 'owner_email', 'latitude', 'longitude', 'account_number', 'ifsc_code').all()
 
             # Serialize data
             serializer = ParkOwnerAllDatasFetching(parking_stations, many=True)
