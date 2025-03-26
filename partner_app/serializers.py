@@ -22,6 +22,7 @@ class ParkingStationImages(serializers.ModelSerializer):
     
     
 class VehiclePricingManagementSerializer(serializers.ModelSerializer):
+    vehicle_name = serializers.CharField(source="vehicle_type.name", read_only=True)
     class Meta :
         model = ParkingCharge
         fields = "__all__"
