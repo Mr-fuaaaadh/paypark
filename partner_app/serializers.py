@@ -5,7 +5,7 @@ from partner_app.models import *
 class ParkOwnerSerializers(serializers.ModelSerializer):
     class Meta :
         model = PlotOnwners
-        exclude = ["password"]
+        fields = "__all__"
 
 class VehicleManagementSerializer(serializers.ModelSerializer):
     class Meta :
