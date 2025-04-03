@@ -91,7 +91,7 @@ class ParkOwnerAllDatasFetching(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     owner_name = serializers.CharField(source="owner.owner_name")
     customer_name = serializers.CharField(source="user.name")
-    profile_image = serializers.CharField(source="user.profile_image")
+    profile_image = serializers.ImageField(source="user.profile_image")
     class Meta:
         model = Review
         fields = ['review_id','owner','owner_name','review_text','rating','review_date','customer_name','profile_image']
