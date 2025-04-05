@@ -102,7 +102,7 @@ class CustomerBookdPlots(serializers.ModelSerializer):
     end_time = serializers.SerializerMethodField()
     customer = serializers.CharField(source="user.name")
     station = serializers.CharField(source="plot.owner_id.owner_name")
-    station_id = serializers.CharField(source="plot.owner_id.pk")
+    station_id = serializers.CharField(source="plot.owner_id.ownerID")
     No = serializers.CharField(source="plot.plot_no")
     
     class Meta :
