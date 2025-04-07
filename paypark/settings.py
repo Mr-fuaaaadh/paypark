@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'partner_app',
     'rest_framework',
     'corsheaders',
+    'channels',
 
 
 ]
@@ -173,3 +174,10 @@ EMAIL_HOST_USER = 'muhammadfuhad3@gmail.com'
 EMAIL_HOST_PASSWORD = 'imci azii rmjo ssxv'
 
 
+ASGI_APPLICATION = 'paypark.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}

@@ -32,6 +32,8 @@ from django.db.models import Prefetch
 from django.db import connection
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 logger = logging.getLogger(__name__)
 
 
@@ -465,22 +467,22 @@ class CustomerParkingPlotReservation(BaseTokenView, ListAPIView):
 
 
 
-# class CustomerCancelReservation(BaseTokenView):
-#     def put(self, request, id):
-#         try:
-#             user, _ = self.get_user_from_token(request)
-#             reserved_plot = get_object_or_404(ParkingReservation, reservation_id=id, user_id=user)
+class CustomerCancelReservation(BaseTokenView):
+    def put(self, request, id):
+        try:
+            user, _ = self.get_user_from_token(request)
+            reserved_plot = get_object_or_404(ParkingReservationPayment, pk=id, user=user)
             
-#             if reserved_plot.status == 'cancelled':
-#                 return Response({"success": False, "message": "This reservation is already cancelled."}, status=status.HTTP_400_BAD_REQUEST)
+            if reserved_plot.status == 'cancelled':
+                return Response({"success": False, "message": "This reservation is already cancelled."}, status=status.HTTP_400_BAD_REQUEST)
             
-#             reserved_plot.status = 'cancelled'
-#             reserved_plot.save()  
-#             serializer = CustomerParkingPlotReservationSerializers(reserved_plot)
-#             return Response({"status": "success", "message": "Your reservation has been cancelled successfully."}, status=status.HTTP_200_OK)
+            reserved_plot.payment_status = 'cancelled'
+            reserved_plot.save()  
+            serializer = PaymentSerilizers(reserved_plot)
+            return Response({"status": "success", "message": "Your reservation has been cancelled successfully."}, status=status.HTTP_200_OK)
         
-#         except Exception as e:
-#             return Response({"success": False, "message": "An unexpected error occurred", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"success": False, "message": "An unexpected error occurred", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -564,12 +566,26 @@ class RazorpayPaymentVerification(BaseTokenView):
             # Enqueue verification and capturing in a background task
             verify_and_capture_payment(razorpay_order_id, razorpay_payment_id, razorpay_signature, customer.pk)
 
+            admins = PlotOnwners.objects.filter(role='admin', is_active=True)
+            for admin in admins:
+                message = f"New payment verified for customer {customer.name}"
+                send_admin_notification(message)
+
             return Response({"message": "Payment verification initiated."}, status=status.HTTP_202_ACCEPTED)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
-
+def send_admin_notification(message):
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        'admin_notifications',
+        {
+            'type': 'send_notification',
+            'message': message
+        }
+    )
 
 def verify_and_capture_payment(razorpay_order_id, razorpay_payment_id, razorpay_signature, customer_id):
     try:
