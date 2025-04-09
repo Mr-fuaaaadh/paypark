@@ -426,15 +426,7 @@ class CustomerGetAllVehiclesType(BaseTokenView):
             
 
 class GetAllParkStations(BaseTokenView):
-
-    @method_decorator(cache_page(10 * 15))  # Cache response for 15 minutes
     def get(self, request):
-        cache_key = "all_park_stations"
-        cached_data = cache.get(cache_key)
-
-        if cached_data:
-            return Response({"status": "success", "data": cached_data}, status=status.HTTP_200_OK)
-
         try:
             # Optimized Query - Removed `select_related('pricing')` since it's not a ForeignKey
             park_stations = (
@@ -445,9 +437,6 @@ class GetAllParkStations(BaseTokenView):
 
             serializer = ParkingStationSerializers(park_stations, many=True)
             response_data = serializer.data
-
-            # Cache result for next time
-            cache.set(cache_key, response_data, timeout=900)  # Cache for 15 minutes
 
             return Response({"status": "success", "data": response_data}, status=status.HTTP_200_OK)
         
