@@ -450,7 +450,7 @@ class CustomerParkingPlotReservation(BaseTokenView):
             user, _ = self.get_user_from_token(request)
             customer = get_object_or_404(Customer, pk=user)
 
-            reservations = ParkingReservationPayment.objects.filter(user=user).select_related('user', 'plot', 'plot__owner_id')
+            reservations = ParkingReservationPayment.objects.filter(user=customer.pk).select_related('user', 'plot', 'plot__owner_id')
 
 
             serializer = CustomerBookdPlots(reservations, many=True)

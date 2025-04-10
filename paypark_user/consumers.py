@@ -1,4 +1,4 @@
-# your_app/consumers.py
+# paypark_user/consumers.py
 
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
