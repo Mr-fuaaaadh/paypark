@@ -95,41 +95,31 @@ class ParkingStationSerializers(serializers.ModelSerializer):
 
 
 class CustomerBookdPlots(serializers.ModelSerializer):
-
-    start_date = serializers.SerializerMethodField()
-    start_time = serializers.SerializerMethodField()
-    end_date = serializers.SerializerMethodField()
-    end_time = serializers.SerializerMethodField()
     customer = serializers.CharField(source="user.name")
     station = serializers.CharField(source="plot.owner_id.owner_name")
     station_id = serializers.CharField(source="plot.owner_id.ownerID")
     No = serializers.CharField(source="plot.plot_no")
-    
-    class Meta :
-        model = ParkingReservationPayment
-        fields = "__all__"  # or specify the exact fields if needed
 
-    def get_start_date(self, obj):
-        # Extracts the date from start_time
-        return obj.start_time.date() if obj.start_time else None
+    start_time = serializers.SerializerMethodField()
+    end_time = serializers.SerializerMethodField()
+    start_date = serializers.SerializerMethodField()
+    end_date = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ParkingReservationPayment
+        fields = "__all__"
 
     def get_start_time(self, obj):
-        # Convert start_time to Kerala Time (IST) and format with AM/PM
-        if obj.start_time:
-            start_time_kerala = obj.start_time.astimezone(pytz.timezone('Asia/Kolkata'))
-            return start_time_kerala.strftime('%I:%M %p')  # Time in 12-hour format with AM/PM
-        return None
-
-    def get_end_date(self, obj):
-        # Extracts the date from end_time
-        return obj.end_time.date() if obj.end_time else None
+        return obj.start_time.strftime("%I:%M %p") if obj.start_time else None
 
     def get_end_time(self, obj):
-        # Convert end_time to Kerala Time (IST) and format with AM/PM
-        if obj.end_time:
-            end_time_kerala = obj.end_time.astimezone(pytz.timezone('Asia/Kolkata'))
-            return end_time_kerala.strftime('%I:%M %p')  # Time in 12-hour format with AM/PM
-        return None
+        return obj.end_time.strftime("%I:%M %p") if obj.end_time else None
+
+    def get_start_date(self, obj):
+        return obj.start_time.strftime("%Y-%m-%d") if obj.start_time else None
+
+    def get_end_date(self, obj):
+        return obj.end_time.strftime("%Y-%m-%d") if obj.end_time else None
 
 
 class PaymentSerilizers(serializers.ModelSerializer):
@@ -176,19 +166,45 @@ class PaymentInitiationSerializer(serializers.Serializer):
     amount = serializers.DecimalField(required=True, max_digits=10, decimal_places=2)
 
     def validate_amount(self, value):
-        """
-        Ensure the amount is positive.
-        """
         if value <= 0:
             raise serializers.ValidationError("Amount must be a positive value.")
         return value
 
     def validate(self, attrs):
-        """
-        Perform any cross-field validation if needed.
-        """
-      
+        plot_id = attrs.get('plot_id')
+        start_time = attrs.get('start_time')
+        end_time = attrs.get('end_time')
+
+        # ✅ Plot existence check
+        try:
+            plot = ParkingPlots.objects.get(id=plot_id)
+        except ParkingPlots.DoesNotExist:
+            raise serializers.ValidationError("Selected parking plot does not exist.")
+
+        # ⏱️ Time validation
+        if start_time < timezone.now():
+            raise serializers.ValidationError("Start time must be in the future.")
+        if end_time <= start_time:
+            raise serializers.ValidationError("End time must be after start time.")
+
+        # ⏳ Max booking window
+        max_duration = timedelta(hours=24)
+        if end_time - start_time > max_duration:
+            raise serializers.ValidationError("Booking duration cannot exceed 24 hours.")
+
+        # 🚫 Conflict check
+        conflict_exists = ParkingReservationPayment.objects.filter(
+            plot_id=plot_id,
+            payment_status='completed',
+            start_time__lt=end_time,
+            end_time__gt=start_time
+        ).exists()
+
+        if conflict_exists:
+            raise serializers.ValidationError("This time slot is already booked for the selected plot.")
+
         return attrs
+
     
 
 class ReviewSerializres(serializers.ModelSerializer):

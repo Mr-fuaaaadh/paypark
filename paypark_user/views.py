@@ -451,8 +451,6 @@ class CustomerParkingPlotReservation(BaseTokenView):
             customer = get_object_or_404(Customer, pk=user)
 
             reservations = ParkingReservationPayment.objects.filter(user=customer.pk).select_related('user', 'plot', 'plot__owner_id')
-
-
             serializer = CustomerBookdPlots(reservations, many=True)
 
             return Response(
@@ -489,6 +487,59 @@ class CustomerCancelReservation(BaseTokenView):
         except Exception as e:
             return Response({"success": False, "message": "An unexpected error occurred", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class CheckPlotAvailability(BaseTokenView):
+    def get(self, request):
+        try:
+            user, _ = self.get_user_from_token(request)
+            if not user:
+                return Response({"error": "Authentication failed."}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Use query_params for GET method
+            stationID = request.data.get('stationID')
+            start_time =request.data.get('start_time')
+            end_time = request.data.get('end_time')
+
+            if not (stationID and start_time and end_time):
+                return Response({"error": "stationID, start_time, and end_time are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate the station
+            sation = PlotOnwners.objects.filter(ownerID=stationID).first()
+            if not sation:
+                return Response({"error": "Station not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            # Validate the station (corrected typo)
+            station = PlotOnwners.objects.filter(ownerID=stationID).first()
+            if not station:
+                return Response({"error": "Station not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            # All plots under this station
+            all_plots = ParkingPlots.objects.filter(owner_id=station)
+
+            # Get reserved plots during given time
+            reserved_plot_ids = ParkingReservationPayment.objects.filter(
+                plot__owner_id=station,
+                start_time__lt=end_time,
+                end_time__gt=start_time
+            ).values_list('plot_id', flat=True)
+
+            # Format response: mark plots as "reserved" or "available"
+            data = []
+            for plot in all_plots:
+                plot_status = "reserved" if plot.id in reserved_plot_ids else "available"
+                data.append({
+                    "plot_id": str(plot.plot_id),
+                    "plot_no": plot.plot_no,
+                    "status": plot_status
+                })
+
+            return Response({"plots": data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
+
+
 
 
 
@@ -505,6 +556,7 @@ class RazorpayPaymentInitiation(BaseTokenView):
         # Validate incoming data
         serializer = PaymentInitiationSerializer(data=request.data)
         if not serializer.is_valid():
+            print(serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         # Extract validated data
@@ -514,7 +566,6 @@ class RazorpayPaymentInitiation(BaseTokenView):
         start_time = validated_data["start_time"]  # Already a Python datetime
         end_time = validated_data["end_time"]  
         amount = validated_data["amount"]
-
 
         # Validate plot existence
         plot = get_object_or_404(ParkingPlots, pk=plot_id)
@@ -607,6 +658,10 @@ def verify_and_capture_payment(razorpay_order_id, razorpay_payment_id, razorpay_
 
         # Fetch the payment object
         payment = get_object_or_404(ParkingReservationPayment, order_id=razorpay_order_id, user=customer.pk)
+
+        print(f"Payment date :{payment.start_time}")
+        print(f"End time : :{payment.end_time}")
+
 
         # Attempt to capture payment
         capture_razorpay_payment(razorpay_payment_id, payment.amount)
