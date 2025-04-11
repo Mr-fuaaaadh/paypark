@@ -160,6 +160,7 @@ class ParkingReservationPayment(models.Model):
     plot = models.ForeignKey(ParkingPlots, on_delete=models.CASCADE, related_name='reservations')
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
+    
 
     reservation_status = models.CharField(max_length=10,choices=RESERVATION_STATUS_CHOICES,default='reserved')
     amount = models.DecimalField(max_digits=10, decimal_places=2)

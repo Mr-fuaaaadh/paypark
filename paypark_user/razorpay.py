@@ -26,6 +26,7 @@ def create_razorpay_order(amount, currency="INR"):
         })
         return order
     except Exception as e:
+        print(f"Error creating Razorpay order: {str(e)}")
         raise ValidationError("Failed to create Razorpay order. Please try again later.")
 
 

@@ -34,6 +34,9 @@ from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.db import transaction, DatabaseError
+from razorpay.errors import BadRequestError, ServerError
+
 logger = logging.getLogger(__name__)
 
 
@@ -313,7 +316,7 @@ class UserPasswordResetOtpVerification(UserForgotPassword):
             # Fetch user by email
             user = self._get_user_by_email(user_email)
         except ObjectDoesNotExist:
-            logger.warning(f"User with email {user_email} not found.")
+            print(f"User with email {user_email} not found.")
             return self._not_found_response({"message":"User with the provided email does not exist."})
         
         try:
@@ -526,9 +529,9 @@ class CheckPlotAvailability(BaseTokenView):
             # Format response: mark plots as "reserved" or "available"
             data = []
             for plot in all_plots:
-                plot_status = "reserved" if plot.id in reserved_plot_ids else "available"
+                plot_status = "reserved" if plot.pk in reserved_plot_ids else "available"
                 data.append({
-                    "plot_id": str(plot.plot_id),
+                    "plot_id": str(plot.pk),
                     "plot_no": plot.plot_no,
                     "status": plot_status
                 })
@@ -548,53 +551,69 @@ class RazorpayPaymentInitiation(BaseTokenView):
     """
     API View to initiate Razorpay payments without creating a ParkingReservation upfront.
     """
+
     def post(self, request):
-        # Extract user from token
-        user_id, _ = self.get_user_from_token(request)
-        if not user_id:
-            return Response({"error": "Authentication failed."}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            # Extract user from token
+            user_id, _ = self.get_user_from_token(request)
+            if not user_id:
+                return Response({"error": "Authentication failed."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Validate incoming data
-        serializer = PaymentInitiationSerializer(data=request.data)
-        if not serializer.is_valid():
-            print(serializer.errors)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Validate incoming data
+            serializer = PaymentInitiationSerializer(data=request.data)
+            if not serializer.is_valid():
+                print(f"Validation error: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Extract validated data
-        
-        validated_data = serializer.validated_data
-        plot_id = validated_data["plot_id"]
-        start_time = validated_data["start_time"]  # Already a Python datetime
-        end_time = validated_data["end_time"]  
-        amount = validated_data["amount"]
+            validated_data = serializer.validated_data
+            plot_id = validated_data["plot_id"]
+            start_time = validated_data["start_time"]
+            end_time = validated_data["end_time"]
+            amount = validated_data["amount"]
 
-        # Validate plot existence
-        plot = get_object_or_404(ParkingPlots, pk=plot_id)
+            logger.info(f"Initiating payment for plot_id={plot_id}, user_id={user_id}, "
+                        f"start_time={start_time}, end_time={end_time}, amount={amount}")
 
-        # Create a Razorpay order
-        razorpay_order = create_razorpay_order(float(amount))
+            # Validate plot existence
+            plot = get_object_or_404(ParkingPlots, pk=plot_id)
 
-        # Store payment in "pending" status
-        with transaction.atomic():
-            ParkingReservationPayment.objects.create(
-                user_id=user_id,
-                plot=plot,
-                amount=amount,
-                payment_method="razorpay",
-                reservation_status="pending",
-                order_id=razorpay_order["id"],
-                start_time=start_time,
-                end_time=end_time,
-            )
+            # Create Razorpay order
+            try:
+                razorpay_order = create_razorpay_order(float(amount))
+            except (BadRequestError, ServerError) as e:
+                logger.error(f"Razorpay order creation failed: {str(e)}")
+                return Response({"error": "Payment gateway error. Please try again later."},
+                                status=status.HTTP_502_BAD_GATEWAY)
 
-        # Return response with Razorpay order details
-        return Response({
-            "order_id": razorpay_order["id"],
-            "amount": str(amount),
-            "key": settings.RAZORPAY_API_KEY,
-            "callback_url": request.build_absolute_uri("/api/payment/verify/"),
-        }, status=status.HTTP_201_CREATED)
 
+            # Save payment info
+            try:
+                with transaction.atomic():
+                    ParkingReservationPayment.objects.create(
+                        user_id=user_id,
+                        plot=plot,
+                        amount=amount,
+                        payment_method="razorpay",
+                        reservation_status="pending",
+                        order_id=razorpay_order["id"],
+                        start_time=start_time,
+                        end_time=end_time,
+                    )
+            except DatabaseError as e:
+                logger.error(f"Database error while saving payment: {str(e)}")
+                return Response({"error": "Failed to save payment data."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Success response
+            return Response({
+                "order_id": razorpay_order["id"],
+                "amount": str(amount),
+                "key": settings.RAZORPAY_API_KEY,
+                "callback_url": request.build_absolute_uri("/api/payment/verify/"),
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.exception("Unexpected error in RazorpayPaymentInitiation:")
+            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
