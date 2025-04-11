@@ -450,28 +450,22 @@ class GetAllParkStations(BaseTokenView):
 class CustomerParkingPlotReservation(BaseTokenView):
     def get(self, request):
         try:
-            user, _ = self.get_user_from_token(request)
-            customer = get_object_or_404(Customer, pk=user)
+            user_id, _ = self.get_user_from_token(request)
+            customer = get_object_or_404(Customer, pk=user_id)
 
-            reservations = ParkingReservationPayment.objects.filter(user=customer.pk).select_related('user', 'plot', 'plot__owner_id')
+            reservations = ParkingReservationPayment.objects.filter(
+                user=customer.pk
+            ).select_related('user', 'plot', 'plot__owner_id').order_by('-created_at')
+
             serializer = CustomerBookdPlots(reservations, many=True)
+            return Response({"status": "success", "results": serializer.data}, status=status.HTTP_200_OK)
 
-            return Response(
-                {"status": "success", "results": serializer.data},
-                status=status.HTTP_200_OK
-            )
-
-        except ObjectDoesNotExist:
-            return Response(
-                {"status": "error", "message": "Customer not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        except Customer.DoesNotExist:
+            return Response({"status": "error", "message": "Customer not found."}, status=status.HTTP_404_NOT_FOUND)
 
         except Exception as e:
-            return Response(
-                {"status": "error", "message": f"An error occurred: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CustomerCancelReservation(BaseTokenView):
     def put(self, request, id):

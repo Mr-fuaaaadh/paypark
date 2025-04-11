@@ -160,7 +160,7 @@ class ParkingReservationPayment(models.Model):
     plot = models.ForeignKey(ParkingPlots, on_delete=models.CASCADE, related_name='reservations')
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    
+
 
     reservation_status = models.CharField(max_length=10,choices=RESERVATION_STATUS_CHOICES,default='reserved')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -172,7 +172,7 @@ class ParkingReservationPayment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"ReservationPayment {self.id} - {self.reservation_status} / {self.payment_status}"
+        return f"ReservationPayment {self.user.name} -  {self.payment_status}"
 
     def mark_payment_completed(self, razorpay_payment_id=None):
         """
