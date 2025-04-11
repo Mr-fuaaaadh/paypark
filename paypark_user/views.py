@@ -316,7 +316,7 @@ class UserPasswordResetOtpVerification(UserForgotPassword):
             # Fetch user by email
             user = self._get_user_by_email(user_email)
         except ObjectDoesNotExist:
-            print(f"User with email {user_email} not found.")
+            logger.info(f"User with email {user_email} not found.")
             return self._not_found_response({"message":"User with the provided email does not exist."})
         
         try:
@@ -324,7 +324,7 @@ class UserPasswordResetOtpVerification(UserForgotPassword):
             if not self._verify_otp(user, user_otp):
                 return self._bad_request({"message":"Invalid or Incorrect OTP."})
         except Exception as e:
-            print(e)
+            logger.info(e)
             return self._server_error_response(message = "An error occurred while verifying the OTP.", error =  f"{str(e)}")
 
         return Response({"message" "OTP verified successfully."}, status=status.HTTP_200_OK)
@@ -345,7 +345,7 @@ class ChangePasswordView(BaseTokenView):
             new_passwd = request.data.get('new_passwd')
             re_passwd = request.data.get('re_passwd')
 
-            print(f"email : {email} new_passwd : {new_passwd} re_passwd : {re_passwd}")
+            logger.info(f"email : {email} new_passwd : {new_passwd} re_passwd : {re_passwd}")
 
 
             # Validate input
@@ -562,7 +562,7 @@ class RazorpayPaymentInitiation(BaseTokenView):
             # Validate incoming data
             serializer = PaymentInitiationSerializer(data=request.data)
             if not serializer.is_valid():
-                print(f"Validation error: {serializer.errors}")
+                logger.info(f"Validation error: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             validated_data = serializer.validated_data
@@ -679,8 +679,8 @@ def verify_and_capture_payment(razorpay_order_id, razorpay_payment_id, razorpay_
         # Fetch the payment object
         payment = get_object_or_404(ParkingReservationPayment, order_id=razorpay_order_id, user=customer.pk)
 
-        print(f"Payment date :{payment.start_time}")
-        print(f"End time : :{payment.end_time}")
+        logger.info(f"Payment date :{payment.start_time}")
+        logger.info(f"End time : :{payment.end_time}")
 
 
         # Attempt to capture payment
