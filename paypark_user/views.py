@@ -495,20 +495,21 @@ class CheckPlotAvailability(BaseTokenView):
                 return Response({"error": "Authentication failed."}, status=status.HTTP_401_UNAUTHORIZED)
 
             # Use query_params for GET method
-            stationID = request.data.get('stationID')
-            start_time =request.data.get('start_time')
-            end_time = request.data.get('end_time')
+            station_id = request.query_params.get('stationID')
+            start_time = request.query_params.get('start_time')
+            end_time = request.query_params.get('end_time')
 
-            if not (stationID and start_time and end_time):
-                return Response({"error": "stationID, start_time, and end_time are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not (station_id and start_time and end_time):
+                return Response({"error": "station_id, start_time, and end_time are required."}, status=status.HTTP_400_BAD_REQUEST)
 
             # Validate the station
-            sation = PlotOnwners.objects.filter(ownerID=stationID).first()
+            sation = PlotOnwners.objects.filter(ownerID=station_id).first()
             if not sation:
                 return Response({"error": "Station not found."}, status=status.HTTP_404_NOT_FOUND)
 
             # Validate the station (corrected typo)
-            station = PlotOnwners.objects.filter(ownerID=stationID).first()
+            station = PlotOnwners.objects.filter(ownerID=station_id).first()
             if not station:
                 return Response({"error": "Station not found."}, status=status.HTTP_404_NOT_FOUND)
 
