@@ -36,6 +36,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.db import transaction, DatabaseError
 from razorpay.errors import BadRequestError, ServerError
+from .utils import send_notification_to_all
 
 logger = logging.getLogger(__name__)
 
@@ -541,6 +542,7 @@ class CheckPlotAvailability(BaseTokenView):
 
 
 
+
 class RazorpayPaymentInitiation(BaseTokenView):
     """
     API View to initiate Razorpay payments without creating a ParkingReservation upfront.
@@ -639,7 +641,7 @@ class RazorpayPaymentVerification(BaseTokenView):
             admins = PlotOnwners.objects.filter(role='admin', is_active=True)
             for admin in admins:
                 message = f"New payment verified for customer {customer.name}"
-                send_admin_notification(message)
+                send_notification_to_all(message)
 
             return Response({"message": "Payment verification initiated."}, status=status.HTTP_202_ACCEPTED)
 
@@ -647,15 +649,6 @@ class RazorpayPaymentVerification(BaseTokenView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-def send_admin_notification(message):
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        'admin_notifications',
-        {
-            'type': 'send_notification',
-            'message': message
-        }
-    )
 
 def verify_and_capture_payment(razorpay_order_id, razorpay_payment_id, razorpay_signature, customer_id):
     try:
