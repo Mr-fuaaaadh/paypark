@@ -669,20 +669,28 @@ class AdminPArkingStationManagement(BaseDataView):
         except Exception as e :
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
         
-    def patch(self,request,pk):
-        try :
+    def patch(self, request, pk):
+        try:
             user = self._admin_authenticate(request)
             if user.role != 'admin':
                 return self._unauthorized_response("You are not authorized to access this resource")
-            
-            is_active = request.data.get("is_active", False)
-            updated = PlotOnwners.objects.filter(pk=pk).update(is_active=is_active)
-            if updated:
-                status_message = "unblocked" if is_active else "blocked"
-                return self._success_response(message=f"Parking station {status_message} successfully")
-            return self._bad_request(message="Parking station not found")
-        except Exception as e :
+
+            # Get the object first
+            plot_owner = PlotOnwners.objects.filter(pk=pk).first()
+
+            if not plot_owner:
+                return self._bad_request(message="Parking station not found")
+
+            # Toggle the value
+            plot_owner.is_active = not plot_owner.is_active
+            plot_owner.save()
+
+            status_message = "unblocked" if plot_owner.is_active else "blocked"
+            return self._success_response(message=f"Parking station {status_message} successfully")
+
+        except Exception as e:
             return self._server_error_response(message="An unexpected error occurred", error=str(e))
+
             
         
 
