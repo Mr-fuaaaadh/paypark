@@ -638,10 +638,20 @@ class RazorpayPaymentVerification(BaseTokenView):
             # Enqueue verification and capturing in a background task
             verify_and_capture_payment(razorpay_order_id, razorpay_payment_id, razorpay_signature, customer.pk)
 
+            owner_payment = get_object_or_404(ParkingReservationPayment, order_id=razorpay_order_id)
+            plot = get_object_or_404(ParkingPlots, pk=owner_payment.plot.pk)
+
+            # Notify Operator
+            if plot.owner_id.role == 'operator':
+                message = f"New payment verified for customer {customer.name}"
+                send_notification_to_all(message)  # you might want to specify recipients here too
+
+            # Notify Admins
             admins = PlotOnwners.objects.filter(role='admin', is_active=True)
             for admin in admins:
                 message = f"New payment verified for customer {customer.name}"
-                send_notification_to_all(message)
+                send_notification_to_all(message)  # again, optionally target admin notifications
+
 
             return Response({"message": "Payment verification initiated."}, status=status.HTTP_202_ACCEPTED)
 
