@@ -36,7 +36,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.db import transaction, DatabaseError
 from razorpay.errors import BadRequestError, ServerError
-from .utils import send_notification_to_all
+from .utils import send_notification_to_all, send_notification_to_user
 
 logger = logging.getLogger(__name__)
 
@@ -644,13 +644,14 @@ class RazorpayPaymentVerification(BaseTokenView):
             # Notify Operator
             if plot.owner_id.role == 'operator':
                 message = f"New payment verified for customer {customer.name}"
-                send_notification_to_all(message)  # you might want to specify recipients here too
+                send_notification_to_user(plot.owner_id.pk, message)
+
 
             # Notify Admins
             admins = PlotOnwners.objects.filter(role='admin', is_active=True)
             for admin in admins:
                 message = f"New payment verified for customer {customer.name}"
-                send_notification_to_all(message)  # again, optionally target admin notifications
+                send_notification_to_all(message)  
 
 
             return Response({"message": "Payment verification initiated."}, status=status.HTTP_202_ACCEPTED)

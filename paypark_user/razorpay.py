@@ -20,13 +20,12 @@ def create_razorpay_order(amount, currency="INR"):
     """
     try:
         order = razorpay_client.order.create({
-            "amount": int(amount * 100),  # Convert to paise
+            "amount": int(amount * 100),
             "currency": currency,
             "payment_capture": 1,
         })
         return order
     except Exception as e:
-        print(f"Error creating Razorpay order: {str(e)}")
         raise ValidationError("Failed to create Razorpay order. Please try again later.")
 
 
