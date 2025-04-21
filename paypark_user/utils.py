@@ -14,6 +14,7 @@ def send_notification_to_user(user_id, message):
         {
             "type": "send_notification",  # This corresponds to a function in your consumer
             "message": message,
+            "user_id": user_id,  # Optional: include user_id in the message if needed
         }
     )
 
