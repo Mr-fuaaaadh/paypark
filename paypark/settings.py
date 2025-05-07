@@ -103,10 +103,10 @@ WSGI_APPLICATION = 'paypark.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'paypark',   
+        'NAME': 'paypark_db',   
         'USER': 'postgres',        
-        'PASSWORD': 'paypark123',   
-        'HOST': 'database-2.cfkow6wii8w5.eu-north-1.rds.amazonaws.com',     
+        'PASSWORD': 'paypark123!!@@',   
+        'HOST': 'localhost',     
         'PORT': '5432',
     }
 }           
